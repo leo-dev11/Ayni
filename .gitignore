@@ -1,0 +1,54 @@
+# ═══════════════════════════════════════════════════════════════
+# Notas de trabajo locales — no se publican.
+# ═══════════════════════════════════════════════════════════════
+GUIA_README.md
+README_Ayni.md
+ROADMAP.md
+docs/BITACORA_FASES.md
+
+# ── Datos (Kaggle, ~2.5 GB descomprimidos) ─────────────────────
+data/raw/
+data/interim/
+data/processed/
+data/*.parquet
+
+# ── Entorno y secretos ─────────────────────────────────────────
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+kaggle.json
+.kaggle/
+access_token
+
+# ── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ── MLflow ─────────────────────────────────────────────────────
+mlruns/
+mlartifacts/
+mlflow.db
+mlflow-artifacts/
+
+# ── Artefactos generados por el pipeline ───────────────────────
+reports/drift/
+reports/*.html
+*.log
+
+# ── Sistema / IDE ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

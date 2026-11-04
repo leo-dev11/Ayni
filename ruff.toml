@@ -1,0 +1,34 @@
+# Configuración de ruff — https://docs.astral.sh/ruff/
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "SIM", # simplify
+    "C4",  # comprehensions
+    "PTH", # pathlib
+    "RET", # return
+    "ARG", # argumentos sin usar
+    "PL",  # pylint
+]
+ignore = [
+    "PLR0913", # demasiados argumentos (útil en pipelines de ML)
+    "PLR2004", # magic values en comparaciones
+    "PLR0915", # demasiadas sentencias
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["ARG", "PLR2004"]
+"notebooks/*" = ["E402", "F401"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
