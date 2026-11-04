@@ -95,11 +95,15 @@ curl -X POST localhost:8000/explain -H "Content-Type: application/json" -d @clie
 | `installments_payments.csv` | Cuotas pagadas | 1 fila por cuota | 13 605 401 |
 | `credit_card_balance.csv` | Saldos mensuales de tarjeta | 1 fila por mes | 3 840 312 |
 
-- **Target:** `TARGET` (1 = impago). **Desbalance:** la descripción de la competencia reporta
-  ~8 % de positivos; se confirma en la fase 1, no se da por hecho aquí.
-- **Particularidades esperadas:** varias decenas de columnas con >50 % de nulos;
-  `DAYS_EMPLOYED = 365243` es un centinela que significa "desempleado/jubilado", no un valor real;
-  `DAYS_BIRTH` viene en días negativos. Todo esto se verifica en la fase 1.
+- **Target:** `TARGET` (1 = impago). **Desbalance medido:** **8.07 %** de impagos
+  (24 825 de 307 511), ratio 11.4:1 frente a los que pagan.
+- **`EXT_SOURCE_1/2/3`** son las variables continuas más predictivas (correlación −0.155 / −0.160 /
+  −0.179 con el impago), pero `EXT_SOURCE_1` viene nula en el 56 % de las filas.
+- **Particularidades verificadas en el EDA:** 41 de 122 columnas tienen >50 % de nulos;
+  `DAYS_EMPLOYED = 365243` es un centinela ("jubilado/desempleado", 18.0 % de las filas) y no un
+  valor real; `DAYS_BIRTH` viene en días negativos.
+- El análisis completo está en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb), con seis figuras
+  en [`reports/figures/`](reports/figures/).
 - `application_test.csv` no trae `TARGET`, así que el test set de evaluación se reserva a partir de `application_train`.
 
 > Los datos no se versionan (`data/` está en `.gitignore`): **3.2 GB** de CSV, que quedan en 530 MB
@@ -150,10 +154,15 @@ flowchart LR
 
 ### Figuras
 
-_Se agregan al cerrar las fases 5 y 6._
+**EDA (fase 1)** — análisis completo en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb),
+seis figuras en [`reports/figures/`](reports/figures/).
 
-- `reports/figures/cost_threshold.png` — costo total vs. umbral.
-- `reports/figures/shap_summary.png` — features que más mueven la predicción.
+| | |
+|---|---|
+| ![EXT_SOURCE](reports/figures/04_ext_source.png) | Las tres `EXT_SOURCE_*` separan con claridad a quien paga de quien no: son el núcleo del modelo y, a la vez, lo más difícil de explicar a un cliente. |
+| ![Sesgo](reports/figures/06_sesgo.png) | El impago es 1.45× mayor en hombres y 3.4× mayor en menores de 25 que en mayores de 65. De aquí sale la decisión de excluir `CODE_GENDER` del modelo. |
+
+_Pendientes de las fases 5 y 6: costo vs. umbral y SHAP summary._
 
 ---
 
