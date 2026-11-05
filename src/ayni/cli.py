@@ -54,9 +54,7 @@ Además hay que entrar una vez a la página de la competición y aceptar las reg
 si no, Kaggle responde 403 aunque el token sea correcto.
 """
 
-PENDING = {
-    "drift": "fase 9 · monitoreo de drift",
-}
+PENDING: dict[str, str] = {}
 
 
 def cmd_download(args: argparse.Namespace) -> int:
@@ -179,6 +177,13 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_drift(args: argparse.Namespace) -> int:
+    from ayni.drift import ejecutar  # noqa: PLC0415
+
+    ejecutar(muestra=args.muestra)
+    return 0
+
+
 def cmd_export_model(args: argparse.Namespace) -> int:
     from ayni.export import exportar  # noqa: PLC0415
 
@@ -269,6 +274,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-register", action="store_true", help="no registra el mejor modelo en el Registry"
     )
     p_train.set_defaults(func=cmd_train)
+
+    p_drift = sub.add_parser("drift", help="simula producción y mide drift con Evidently")
+    p_drift.add_argument("--muestra", type=int, default=3000, help="filas por conjunto")
+    p_drift.set_defaults(func=cmd_drift)
 
     p_export = sub.add_parser("export-model", help="deja el modelo listo para la API")
     p_export.add_argument("--version", default="latest", help="versión del modelo")

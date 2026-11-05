@@ -1,0 +1,185 @@
+{
+  "columnas_monitoreadas": 27,
+  "filas_referencia": 3000,
+  "filas_produccion": 3000,
+  "criterio": "distancia > umbral (Evidently 0.7)",
+  "alteraciones": {
+    "AMT_INCOME_TOTAL": "ingresos +30 % (mejora salarial general)",
+    "EXT_SOURCE_2": "score externo castigado −0.15 (empeoró el buró)",
+    "age_years": "cartera 4 años mayor (envejeció la base de clientes)",
+    "credit_income_ratio": "derivado: se recalcula con el nuevo ingreso",
+    "annuity_income_ratio": "derivado: se recalcula con el nuevo ingreso",
+    "income_per_person": "derivado: se recalcula con el nuevo ingreso",
+    "NAME_CONTRACT_TYPE": "30 % de Cash loans → Revolving loans"
+  },
+  "columnas_con_drift": [
+    "AMT_INCOME_TOTAL",
+    "EXT_SOURCE_2",
+    "NAME_CONTRACT_TYPE",
+    "age_years",
+    "annuity_income_ratio",
+    "credit_income_ratio",
+    "income_per_person"
+  ],
+  "esperadas": [
+    "AMT_INCOME_TOTAL",
+    "EXT_SOURCE_2",
+    "NAME_CONTRACT_TYPE",
+    "age_years",
+    "annuity_income_ratio",
+    "credit_income_ratio",
+    "income_per_person"
+  ],
+  "detectadas_esperadas": [
+    "AMT_INCOME_TOTAL",
+    "EXT_SOURCE_2",
+    "NAME_CONTRACT_TYPE",
+    "age_years",
+    "annuity_income_ratio",
+    "credit_income_ratio",
+    "income_per_person"
+  ],
+  "no_detectadas": [],
+  "falsos_positivos": [],
+  "share_columnas_con_drift": 0.2593,
+  "distancias": {
+    "AMT_ANNUITY": {
+      "distancia": 0.0253,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "AMT_CREDIT": {
+      "distancia": 0.0289,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "AMT_GOODS_PRICE": {
+      "distancia": 0.0334,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "AMT_INCOME_TOTAL": {
+      "distancia": 0.5314,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "EXT_SOURCE_1": {
+      "distancia": 0.0353,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "EXT_SOURCE_2": {
+      "distancia": 0.7377,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "EXT_SOURCE_3": {
+      "distancia": 0.0246,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "NAME_CONTRACT_TYPE": {
+      "distancia": 0.2223,
+      "umbral": 0.1,
+      "metodo": "Jensen-Shannon distance"
+    },
+    "NAME_EDUCATION_TYPE": {
+      "distancia": 0.0105,
+      "umbral": 0.1,
+      "metodo": "Jensen-Shannon distance"
+    },
+    "NAME_FAMILY_STATUS": {
+      "distancia": 0.0246,
+      "umbral": 0.1,
+      "metodo": "Jensen-Shannon distance"
+    },
+    "OCCUPATION_TYPE": {
+      "distancia": 0.0594,
+      "umbral": 0.1,
+      "metodo": "Jensen-Shannon distance"
+    },
+    "ORGANIZATION_TYPE": {
+      "distancia": 0.0693,
+      "umbral": 0.1,
+      "metodo": "Jensen-Shannon distance"
+    },
+    "OWN_CAR_AGE": {
+      "distancia": 0.0413,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "age_years": {
+      "distancia": 0.3199,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "annuity_income_ratio": {
+      "distancia": 0.4256,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "bureau_debt_ratio": {
+      "distancia": 0.019,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "credit_income_ratio": {
+      "distancia": 0.3381,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "employed_years": {
+      "distancia": 0.0372,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "goods_credit_ratio": {
+      "distancia": 0.0342,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "income_per_person": {
+      "distancia": 0.4104,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "inst_late_rate": {
+      "distancia": 0.0384,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "inst_n_payments": {
+      "distancia": 0.0255,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "inst_paid_sum": {
+      "distancia": 0.0137,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "prev_annuity_mean": {
+      "distancia": 0.0355,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "prev_cnt_payment_max": {
+      "distancia": 0.0359,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "prev_credit_application_ratio": {
+      "distancia": 0.0438,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    },
+    "prev_refusal_rate": {
+      "distancia": 0.0265,
+      "umbral": 0.1,
+      "metodo": "Wasserstein distance (normed)"
+    }
+  },
+  "figura": "reports\\figures\\11_drift_distancias.png",
+  "reporte": "reports\\drift_reporte.html",
+  "generado": "2026-11-05T13:23:10+00:00"
+}

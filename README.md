@@ -251,6 +251,22 @@ su valor, su contribución en log-odds y la dirección del riesgo.
 Los valores están en **log-odds**, la escala en la que el modelo razona; convertirlos a puntos de
 score o a probabilidad es una decisión de presentación, no de cálculo.
 
+### Monitoreo de drift
+
+Se simula una cartera "de producción" a partir de train alterando cuatro cosas a propósito
+(ingresos +30 %, `EXT_SOURCE_2` −0.15, edad +4 años y 30 % de `Cash loans` convertidos a
+`Revolving loans`, con los ratios recalculados) y se compara contra la referencia con Evidently.
+
+![Drift](reports/figures/11_drift_distancias.png)
+
+**7 de 7 alteraciones detectadas y 0 falsos positivos.** La separación es limpia: la feature menos
+movida de las alteradas queda en **0.22** y la más ruidosa de las intactas en **0.07**, con el
+umbral en **0.1**. Las siete son las cuatro plantadas más los tres ratios derivados del ingreso.
+
+El reporte HTML completo se regenera con `ayni drift` (`reports/drift_reporte.html`, ~5 MB, no
+versionado); el resumen con distancias por feature está en
+[`reports/drift_resumen.json`](reports/drift_resumen.json).
+
 ### Figuras
 
 **EDA (fase 1)** — análisis completo en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb),
