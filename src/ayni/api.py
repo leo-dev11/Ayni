@@ -164,7 +164,7 @@ def a_fila(cliente: Cliente, servicio: Servicio) -> pd.DataFrame:
         fila["employed_years"] = cliente.years_employed
         fila["employed_anomaly"] = 0
 
-    if cliente.amt_goods_price:
+    if cliente.amt_goods_price is not None:
         fila["AMT_GOODS_PRICE"] = cliente.amt_goods_price
         fila["goods_credit_ratio"] = cliente.amt_goods_price / cliente.amt_credit
 
@@ -206,6 +206,27 @@ def a_fila(cliente: Cliente, servicio: Servicio) -> pd.DataFrame:
     return X
 
 
+def _validar_categorias(cliente: Cliente, servicio: Servicio) -> None:
+    """Una categoría fuera del vocabulario se convertiría en nulo sin avisar; mejor un 422."""
+    campos = {
+        "NAME_CONTRACT_TYPE": cliente.contract_type,
+        "NAME_EDUCATION_TYPE": cliente.education,
+        "NAME_INCOME_TYPE": cliente.income_type,
+        "OCCUPATION_TYPE": cliente.occupation,
+        "ORGANIZATION_TYPE": cliente.organization,
+        "NAME_FAMILY_STATUS": cliente.family_status,
+    }
+    vocabulario = servicio.manifest.get("categorias", {})
+    errores = []
+    for columna, valor in campos.items():
+        permitidos = vocabulario.get(columna, [])
+        if valor is not None and permitidos and valor not in permitidos:
+            ejemplos = ", ".join(repr(p) for p in permitidos[:3])
+            errores.append(f"{columna}={valor!r} no existe (por ejemplo: {ejemplos}…)")
+    if errores:
+        raise HTTPException(status_code=422, detail={"categorias_invalidas": errores})
+
+
 def _probabilidad(servicio: Servicio, X: pd.DataFrame) -> float:
     return float(np.ravel(servicio.booster.predict(X))[0])
 
@@ -222,7 +243,6 @@ def _razones(
     Al rechazar se devuelven solo las que suben el riesgo; al aprobar, solo las que lo bajan. Dar
     a un rechazado un motivo que dice "esto juega a tu favor" es confuso y, en banca, legalmente
     insostenible. Si el filtro deja la lista vacía, se devuelve la mejor disponible sin filtrar.
-
 
     Un `NaN` sí empuja el score, pero "no nos diste tu antigüedad de registro" no es una razón
     defendible ante un cliente. El campo ausente se reporta aparte, como advertencia.
@@ -310,6 +330,7 @@ def crear_app(servicio: Servicio | None = None, directorio: Path = MODELS_DIR) -
     @app.post("/predict", response_model=Prediccion, tags=["scoring"])
     def predict(cliente: Cliente) -> Prediccion:
         actual = servicio_actual()
+        _validar_categorias(cliente, actual)
         X = a_fila(cliente, actual)
         probabilidad = _probabilidad(actual, X)
         return Prediccion(
@@ -322,6 +343,7 @@ def crear_app(servicio: Servicio | None = None, directorio: Path = MODELS_DIR) -
     @app.post("/explain", response_model=Explicacion, tags=["scoring"])
     def explain(cliente: Cliente) -> Explicacion:
         actual = servicio_actual()
+        _validar_categorias(cliente, actual)
         X = a_fila(cliente, actual)
         probabilidad = _probabilidad(actual, X)
         cobertura = _cobertura(X)

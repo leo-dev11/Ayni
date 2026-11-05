@@ -1,97 +1,97 @@
 {
-  "version_modelo": "latest",
+  "version_modelo": "1",
   "umbral": 0.16,
   "n_muestra_shap": 5000,
   "top_global": {
-    "EXT_SOURCE_2": 0.3048,
-    "EXT_SOURCE_3": 0.2749,
-    "EXT_SOURCE_1": 0.1569,
-    "prev_cnt_payment_max": 0.1171,
-    "goods_credit_ratio": 0.1054,
-    "ORGANIZATION_TYPE": 0.0925,
-    "prev_credit_application_ratio": 0.0905,
-    "employed_years": 0.089,
-    "AMT_ANNUITY": 0.0868,
-    "bureau_debt_ratio": 0.0755
+    "EXT_SOURCE_2": 0.3049,
+    "EXT_SOURCE_3": 0.2771,
+    "EXT_SOURCE_1": 0.1576,
+    "prev_cnt_payment_max": 0.1151,
+    "goods_credit_ratio": 0.1039,
+    "ORGANIZATION_TYPE": 0.0919,
+    "prev_credit_application_ratio": 0.0886,
+    "employed_years": 0.0878,
+    "AMT_ANNUITY": 0.0842,
+    "bureau_debt_ratio": 0.0726
   },
   "aprobado": {
-    "sk_id_curr": 150538,
-    "probabilidad": 0.0396,
+    "sk_id_curr": 202950,
+    "probabilidad": 0.04,
     "umbral": 0.16,
     "decision": "approve",
     "razones": [
       {
-        "feature": "goods_credit_ratio",
-        "valor": 0.9381,
-        "contribucion": -0.1147,
-        "direccion": "reduce_riesgo"
-      },
-      {
-        "feature": "prev_credit_application_ratio",
-        "valor": 0.8638,
-        "contribucion": -0.1138,
-        "direccion": "reduce_riesgo"
-      },
-      {
-        "feature": "prev_cnt_payment_max",
-        "valor": 12.0,
-        "contribucion": -0.1127,
-        "direccion": "reduce_riesgo"
-      },
-      {
-        "feature": "inst_late_rate",
+        "feature": "cc_utilization_max",
         "valor": 0.0,
-        "contribucion": -0.089,
+        "contribucion": -0.1416,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "AMT_ANNUITY",
+        "valor": 12919.5,
+        "contribucion": -0.126,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "OWN_CAR_AGE",
+        "valor": 8.0,
+        "contribucion": -0.1259,
         "direccion": "reduce_riesgo"
       },
       {
         "feature": "inst_paid_sum",
-        "valor": 266902.695,
-        "contribucion": -0.0649,
+        "valor": 3386538.405,
+        "contribucion": -0.0825,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "prev_credit_application_ratio",
+        "valor": 0.9979,
+        "contribucion": -0.0812,
         "direccion": "reduce_riesgo"
       }
     ]
   },
   "rechazado": {
-    "sk_id_curr": 288491,
-    "probabilidad": 0.2413,
+    "sk_id_curr": 263625,
+    "probabilidad": 0.2399,
     "umbral": 0.16,
     "decision": "reject",
     "razones": [
       {
         "feature": "EXT_SOURCE_3",
-        "valor": 0.3573,
-        "contribucion": 0.3024,
+        "valor": 0.2956,
+        "contribucion": 0.5323,
         "direccion": "aumenta_riesgo"
       },
       {
-        "feature": "prev_refusal_rate",
-        "valor": 0.8889,
-        "contribucion": 0.3012,
+        "feature": "goods_credit_ratio",
+        "valor": 0.703,
+        "contribucion": 0.3287,
         "direccion": "aumenta_riesgo"
       },
       {
-        "feature": "EXT_SOURCE_1",
-        "valor": 0.2769,
-        "contribucion": 0.2559,
+        "feature": "EXT_SOURCE_2",
+        "valor": 0.3532,
+        "contribucion": 0.3122,
         "direccion": "aumenta_riesgo"
       },
       {
         "feature": "bureau_debt_ratio",
-        "valor": 0.9933,
-        "contribucion": 0.1883,
+        "valor": 0.7537,
+        "contribucion": 0.1569,
         "direccion": "aumenta_riesgo"
       },
       {
-        "feature": "inst_late_rate",
-        "valor": 0.1667,
-        "contribucion": 0.1482,
+        "feature": "prev_cnt_payment_max",
+        "valor": 36.0,
+        "contribucion": 0.1382,
         "direccion": "aumenta_riesgo"
       }
     ]
   },
   "figuras": [
-    "reports\\figures\\09_shap_summary.png",
-    "reports\\figures\\10_shap_local.png"
+    "reports/figures/09_shap_summary.png",
+    "reports/figures/10_shap_local.png"
   ]
 }

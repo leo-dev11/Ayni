@@ -32,6 +32,7 @@ import shap
 
 from ayni.config import ID_COL, MLFLOW_URI, PROCESSED_DIR, REPORTS_DIR, ROOT, TARGET
 from ayni.evaluate import aplicar_categorias
+from ayni.export import resolver_version
 from ayni.split import TRAIN_PATH
 
 # shap avisa en cada llamada de que LightGBM binario devuelve una lista; ya se normaliza.
@@ -73,7 +74,7 @@ class Razon:
 
 def cargar_modelo(version: str = "latest") -> lgb.LGBMClassifier:
     mlflow.set_tracking_uri(MLFLOW_URI)
-    return mlflow.lightgbm.load_model(f"models:/{REGISTERED_MODEL}/{version}")
+    return mlflow.lightgbm.load_model(f"models:/{REGISTERED_MODEL}/{resolver_version(version)}")
 
 
 def cargar_umbral() -> float:
@@ -219,6 +220,7 @@ def _figura_local(explicador, X: pd.DataFrame, indices: dict[str, int], proba) -
 
 def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
     umbral = cargar_umbral()
+    version = resolver_version(version)
     modelo = cargar_modelo(version)
 
     train = pd.read_parquet(TRAIN_PATH)
@@ -273,8 +275,8 @@ def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
             "razones": razones_rechazado,
         },
         "figuras": [
-            str(fig_global.relative_to(ROOT)),
-            str(fig_local.relative_to(ROOT)),
+            fig_global.relative_to(ROOT).as_posix(),
+            fig_local.relative_to(ROOT).as_posix(),
         ],
     }
     RAZONES_PATH.write_text(

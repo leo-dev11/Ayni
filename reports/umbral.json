@@ -4,15 +4,15 @@
     "falso_negativo": 5.0,
     "falso_positivo": 1.0
   },
-  "umbral_optimo": 0.16,
+  "umbral_optimo": 0.155,
   "n_oof": 246008,
-  "costo_por_solicitud_optimo": 0.3264,
-  "costo_por_solicitud_umbral_050": 0.3894,
-  "figura": "reports\\figures\\08_costo_vs_umbral.png",
+  "costo_por_solicitud_optimo": 0.3261,
+  "costo_por_solicitud_umbral_050": 0.3896,
+  "figura": "reports/figures/08_costo_vs_umbral.png",
   "sensibilidad_ratio_vs_umbral": [
     {
       "ratio_fn_fp": 1,
-      "umbral_optimo": 0.535,
+      "umbral_optimo": 0.53,
       "teorico_1/(ratio+1)": 0.5,
       "tasa_aprobacion": 0.9957,
       "impago_entre_aprobados": 0.0786,
@@ -20,45 +20,45 @@
     },
     {
       "ratio_fn_fp": 2,
-      "umbral_optimo": 0.355,
+      "umbral_optimo": 0.365,
       "teorico_1/(ratio+1)": 0.3333,
-      "tasa_aprobacion": 0.977,
-      "impago_entre_aprobados": 0.0723,
-      "costo_por_solicitud": 0.1542
+      "tasa_aprobacion": 0.979,
+      "impago_entre_aprobados": 0.0729,
+      "costo_por_solicitud": 0.1543
     },
     {
       "ratio_fn_fp": 5,
-      "umbral_optimo": 0.16,
+      "umbral_optimo": 0.155,
       "teorico_1/(ratio+1)": 0.1667,
-      "tasa_aprobacion": 0.8733,
-      "impago_entre_aprobados": 0.0535,
-      "costo_por_solicitud": 0.3264
+      "tasa_aprobacion": 0.8664,
+      "impago_entre_aprobados": 0.0526,
+      "costo_por_solicitud": 0.3261
     },
     {
       "ratio_fn_fp": 10,
-      "umbral_optimo": 0.09,
+      "umbral_optimo": 0.085,
       "teorico_1/(ratio+1)": 0.0909,
-      "tasa_aprobacion": 0.7317,
-      "impago_entre_aprobados": 0.0386,
-      "costo_por_solicitud": 0.4979
+      "tasa_aprobacion": 0.7119,
+      "impago_entre_aprobados": 0.0371,
+      "costo_por_solicitud": 0.4977
     },
     {
       "ratio_fn_fp": 20,
       "umbral_optimo": 0.045,
       "teorico_1/(ratio+1)": 0.0476,
-      "tasa_aprobacion": 0.4862,
-      "impago_entre_aprobados": 0.0239,
-      "costo_por_solicitud": 0.6772
+      "tasa_aprobacion": 0.4811,
+      "impago_entre_aprobados": 0.0238,
+      "costo_por_solicitud": 0.6784
     },
     {
       "ratio_fn_fp": 50,
       "umbral_optimo": 0.02,
       "teorico_1/(ratio+1)": 0.0196,
-      "tasa_aprobacion": 0.1751,
-      "impago_entre_aprobados": 0.0121,
-      "costo_por_solicitud": 0.8522
+      "tasa_aprobacion": 0.1669,
+      "impago_entre_aprobados": 0.0119,
+      "costo_por_solicitud": 0.8536
     }
   ],
-  "elegido": "2026-11-05T12:16:39+00:00",
-  "ahorro_relativo": 0.1618
+  "elegido": "2026-11-05T15:36:54+00:00",
+  "ahorro_relativo": 0.163
 }

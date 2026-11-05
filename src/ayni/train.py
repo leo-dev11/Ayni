@@ -140,6 +140,10 @@ def crear_logreg() -> Pipeline:
 def crear_lgbm(params: dict) -> lgb.LGBMClassifier:
     base = {
         "objective": "binary",
+        # Reproducibilidad: sin esto, el histograma multihilo puede variar en la última
+        # milésima entre corridas y el número publicado deja de ser verificable.
+        "deterministic": True,
+        "force_col_wise": True,
         # El early stopping se mide con AUC: con `scale_pos_weight` la logloss de
         # validación deja de ser comparable y corta en la primera iteración.
         "metric": "auc",
@@ -439,15 +443,12 @@ def main(
 
     print("\n" + resumen.to_string(index=False))
 
-    sin_genero = [c for c in corridas if c.familia == "lgbm" and not c.con_genero]
-    con_genero = [c for c in corridas if c.familia == "lgbm" and c.con_genero]
-    if sin_genero and con_genero:
-        referencia = max(c.metricas["roc_auc_cv"] for c in sin_genero)
-        delta = con_genero[0].metricas["roc_auc_cv"] - referencia
+    comparacion = coste_de_excluir_genero(corridas)
+    if comparacion is not None:
         print(
-            f"\ncoste de excluir CODE_GENDER: {delta:+.4f} AUC "
-            f"(sin género {referencia:.4f} · con género "
-            f"{con_genero[0].metricas['roc_auc_cv']:.4f})"
+            f"\ncoste de excluir CODE_GENDER: {comparacion.delta:+.4f} AUC "
+            f"({comparacion.corrida_sin} {comparacion.sin_genero:.4f} vs "
+            f"{comparacion.corrida_con} {comparacion.con_genero:.4f}, mismos hiperparámetros)"
         )
 
     destino = REPORTS_DIR / "resumen_corridas.json"

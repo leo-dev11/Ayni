@@ -212,8 +212,8 @@ def ejecutar(*, muestra: int = 3000, seed: int = 42) -> dict:
             c: {**info, "distancia": round(float(info["distancia"]), 4)}
             for c, info in sorted(distancias.items())
         },
-        "figura": str(_figura(distancias, cambios).relative_to(ROOT)),
-        "reporte": str(DRIFT_HTML.relative_to(ROOT)),
+        "figura": _figura(distancias, cambios).relative_to(ROOT).as_posix(),
+        "reporte": DRIFT_HTML.relative_to(ROOT).as_posix(),
         "generado": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     DRIFT_JSON.parent.mkdir(parents=True, exist_ok=True)

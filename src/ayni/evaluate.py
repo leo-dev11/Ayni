@@ -156,7 +156,7 @@ def elegir_umbral(corrida: str = "lgbm-ajustado") -> dict:
         "costo_por_solicitud_umbral_050": round(
             curva.loc[(curva["umbral"] - 0.5).abs().idxmin(), "costo_por_solicitud"], 4
         ),
-        "figura": str(figura.relative_to(ROOT)),
+        "figura": figura.relative_to(ROOT).as_posix(),
         "sensibilidad_ratio_vs_umbral": sens.round(4).to_dict(orient="records"),
         "elegido": datetime.now(UTC).isoformat(timespec="seconds"),
     }

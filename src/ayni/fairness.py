@@ -58,13 +58,35 @@ def _metricas_grupo(df: pd.DataFrame, columna: str) -> pd.DataFrame:
         .mean()
         .rename("mora_entre_aprobados")
     )
-    tabla = resumen.join(mora).fillna({"mora_entre_aprobados": 0.0}).reset_index()
+    # métrica más exigente: entre quienes SÍ habrían pagado, a quién se aprueba
+    buenos = (
+        trabajo[trabajo[TARGET] == 0]
+        .groupby(columna, observed=True)["aprobado"]
+        .mean()
+        .rename("aprobacion_pagadores")
+    )
+    tabla = (
+        resumen.join(mora)
+        .join(buenos)
+        .fillna({"mora_entre_aprobados": 0.0, "aprobacion_pagadores": 0.0})
+        .reset_index()
+    )
 
-    for clave in ("tasa_aprobacion", "tasa_impago", "mora_entre_aprobados"):
+    for clave in ("tasa_aprobacion", "tasa_impago", "mora_entre_aprobados", "aprobacion_pagadores"):
         tabla[clave] = tabla[clave].round(4)
     validos = tabla[tabla["n"] >= MIN_GRUPO]["tasa_aprobacion"]
-    tabla["ratio_vs_mejor"] = (tabla["tasa_aprobacion"] / validos.max()).round(4)
+    mejor = float(validos.max()) if not validos.empty else 0.0
+    tabla["ratio_vs_mejor"] = (tabla["tasa_aprobacion"] / mejor).round(4) if mejor > 0 else 0.0
     return tabla
+
+
+def brecha_80(tabla: pd.DataFrame) -> float:
+    """Regla del 80 %: aprobación del grupo menos favorecido sobre el más favorecido.
+
+    Solo entran grupos con `n >= MIN_GRUPO`: con dos casos, el azar decide la métrica.
+    """
+    validos = tabla[tabla["n"] >= MIN_GRUPO]
+    return round(float(validos["ratio_vs_mejor"].min()), 4)
 
 
 def _figura(por_genero: pd.DataFrame, por_edad: pd.DataFrame) -> Path:
@@ -125,19 +147,15 @@ def ejecutar(corrida: str = CORRIDA) -> dict:
     por_edad = _metricas_grupo(datos, "tramo_edad")
     figura = _figura(por_genero, por_edad)
 
-    def _brecha(tabla: pd.DataFrame) -> float:
-        """Regla del 80 %: aprobación del grupo menos favorecido sobre el más favorecido."""
-        return round(float(tabla["ratio_vs_mejor"].min()), 4)
-
     resultado = {
         "corrida": corrida,
         "umbral": umbral,
         "n": int(len(datos)),
         "genero": por_genero.to_dict(orient="records"),
         "edad": por_edad.to_dict(orient="records"),
-        "regla_80_por_genero": _brecha(por_genero),
-        "regla_80_por_edad": _brecha(por_edad),
-        "figura": str(figura.relative_to(ROOT)),
+        "regla_80_por_genero": brecha_80(por_genero),
+        "regla_80_por_edad": brecha_80(por_edad),
+        "figura": figura.relative_to(ROOT).as_posix(),
         "nota": (
             "CODE_GENDER no entra en el modelo; se mide porque el sesgo puede llegar por "
             "variables correlacionadas."

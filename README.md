@@ -14,30 +14,30 @@
 
 ## Resultados clave
 
-**Evaluación final en el test congelado (61 503 solicitudes), leído una sola vez.**
+**Evaluación final en el test congelado (61 503 solicitudes).**
 
-- **ROC-AUC 0.783** y **PR-AUC 0.277** en test (validación cruzada: 0.780 / 0.270). Sin sorpresa
+- **ROC-AUC 0.782** y **PR-AUC 0.277** en test (validación cruzada: 0.780 / 0.269). Sin sorpresa
   desagradable: el modelo generaliza.
-- **El umbral óptimo no es 0.5, es 0.16.** Aprobar con 0.5 equivale a aprobar al 99.4 % de los
-  solicitantes; el corte calculado aprueba al **87.2 %**.
-- **El costo total baja un 16.9 %** (23 835 → 19 799) y la mora entre aprobados cae del
+- **El umbral óptimo no es 0.5, es 0.155.** Aprobar con 0.5 equivale a aprobar al 99.3 % de los
+  solicitantes; el corte calculado aprueba al **86.6 %**.
+- **El costo total baja un 17.3 %** (23 862 → 19 744) y la mora entre aprobados cae del
   **7.8 % al 5.2 %**.
-- **Excluir `CODE_GENDER` cuesta +0.0006 AUC** (0.7802 con género vs 0.7796 sin él, mismos
-  hiperparámetros). Menos de un milésimo: la decisión queda con su precio publicado y no hay
+- **Excluir `CODE_GENDER` cuesta +0.0014 AUC** (0.7802 con género vs 0.7789 sin él, mismos
+  hiperparámetros). Menos de dos milésimas: la decisión queda con su precio publicado y no hay
   argumento de rendimiento para revertirla.
-- **`scale_pos_weight` empeora el modelo** (0.7774 vs 0.7796): el desbalance se trata en el umbral
+- **`scale_pos_weight` empeora el modelo** (0.7776 vs 0.7789): el desbalance se trata en el umbral
   de decisión, no en el entrenamiento.
 
 ![Costo vs umbral](reports/figures/08_costo_vs_umbral.png)
 
 | Métrica | Validación cruzada | Test |
 |---|---|---|
-| ROC-AUC · LightGBM | **0.7800** ± 0.0026 | **0.7829** |
-| PR-AUC · LightGBM | **0.2697** | **0.2774** |
+| ROC-AUC · LightGBM | **0.7798** ± 0.0026 | **0.7815** |
+| PR-AUC · LightGBM | **0.2692** | **0.2768** |
 | ROC-AUC · baseline logístico | 0.7658 ± 0.0019 | — |
-| PR-AUC · baseline logístico | 0.2440 | — |
-| Costo total al umbral 0.5 | 95 805 (0.389/solicitud) | 23 835 (0.388/solicitud) |
-| Costo total al umbral 0.16 | **80 303 (0.326/solicitud)** | **19 799 (0.322/solicitud)** |
+| PR-AUC · baseline logístico | 0.2439 | — |
+| Costo total al umbral 0.5 | 95 871 (0.390/solicitud) | 23 862 (0.388/solicitud) |
+| Costo total al umbral 0.155 | **80 220 (0.326/solicitud)** | **19 744 (0.321/solicitud)** |
 
 ---
 
@@ -70,7 +70,7 @@ curl -X POST localhost:8000/predict \
 ```
 
 ```json
-{"probabilidad": 0.0888, "decision": "approve", "umbral": 0.16, "modelo_version": "latest"}
+{"probabilidad": 0.0614, "decision": "approve", "umbral": 0.155, "modelo_version": "1"}
 ```
 
 Y la explicación de un cliente de alto riesgo, con las razones que se le darían al rechazarlo:
@@ -87,15 +87,15 @@ curl -X POST localhost:8000/explain \
 ```
 
 ```json
-{"probabilidad": 0.7976, "decision": "reject", "umbral": 0.16, "modelo_version": "latest",
+{"probabilidad": 0.5972, "decision": "reject", "umbral": 0.155, "modelo_version": "1",
  "razones": [
-   {"feature": "EXT_SOURCE_3",       "valor": 0.09,           "contribucion": 1.0186, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_2",       "valor": 0.18,           "contribucion": 0.5859, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_1",       "valor": 0.12,           "contribucion": 0.4990, "direccion": "aumenta_riesgo"},
-   {"feature": "bureau_debt_ratio",  "valor": 0.95,           "contribucion": 0.2426, "direccion": "aumenta_riesgo"},
-   {"feature": "ORGANIZATION_TYPE",  "valor": "Self-employed", "contribucion": 0.2309, "direccion": "aumenta_riesgo"}
+   {"feature": "EXT_SOURCE_3",       "valor": 0.09,  "contribucion": 0.9877, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_2",       "valor": 0.18,  "contribucion": 0.5596, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_1",       "valor": 0.12,  "contribucion": 0.5348, "direccion": "aumenta_riesgo"},
+   {"feature": "prev_refusal_rate",  "valor": 0.9,   "contribucion": 0.2147, "direccion": "aumenta_riesgo"},
+   {"feature": "bureau_debt_ratio",  "valor": 0.95,  "contribucion": 0.2117, "direccion": "aumenta_riesgo"}
  ],
- "cobertura": 0.141, "advertencia": null}
+ "cobertura": 0.108, "advertencia": null}
 ```
 
 `cobertura` es la fracción de los 185 campos del modelo que llegó en la petición, y `advertencia` se
@@ -155,7 +155,7 @@ flowchart LR
 6. **Umbral por costo.** Se recorre la curva de umbrales y se elige el que minimiza el costo esperado, con la matriz documentada.
 7. **Explicación dentro del servicio.** SHAP global para el reporte, SHAP local convertido en *reason codes* para cada decisión individual.
 8. **Trazabilidad completa.** Cada corrida queda en MLflow y el mejor modelo va al Model Registry con su umbral pegado al artefacto.
-9. **Compuerta de calidad.** `ayni evaluate` falla si el ROC-AUC del test baja de **0.75**, y CI corre los 57 tests en cada push sin necesitar el dataset: todo se construye con datos sintéticos y modelos diminutos.
+9. **Compuerta de calidad.** `ayni evaluate` falla si el ROC-AUC del test baja de **0.75**, y CI corre los 65 tests en cada push sin necesitar el dataset: todo se construye con datos sintéticos y modelos diminutos.
 
 ---
 
@@ -168,15 +168,15 @@ registradas en MLflow; el campeón es `lgbm-ajustado` (v1 del Registry).
 
 | Corrida | ROC-AUC (CV) | PR-AUC (CV) | Notas |
 |---|---|---|---|
-| `lgbm-ajustado` | **0.7800** ± 0.0026 | **0.2697** | campeón registrado |
-| `lgbm-base` | 0.7796 ± 0.0029 | 0.2685 | hiperparámetros por defecto |
-| `lgbm-pos-weight` | 0.7774 ± 0.0024 | 0.2665 | `scale_pos_weight` = 11.4 |
-| `baseline-logreg` | 0.7658 ± 0.0019 | 0.2440 | imputación + escalado + one-hot |
-| `lgbm-con-genero` | 0.7802 ± 0.0025 | 0.2691 | **solo para medir**, excluida del registro |
+| `lgbm-ajustado` | **0.7798** ± 0.0026 | **0.2692** | campeón registrado |
+| `lgbm-base` | 0.7789 ± 0.0026 | 0.2676 | hiperparámetros por defecto |
+| `lgbm-pos-weight` | 0.7776 ± 0.0025 | 0.2665 | `scale_pos_weight` = 11.4 |
+| `baseline-logreg` | 0.7658 ± 0.0019 | 0.2439 | imputación + escalado + one-hot |
+| `lgbm-con-genero` | 0.7802 ± 0.0026 | 0.2690 | **solo para medir**, excluida del registro |
 
 | ROC-AUC (test) | PR-AUC (test) |
 |---|---|
-| **0.7829** | **0.2774** |
+| **0.7815** | **0.2768** |
 
 ### Decisión por costo
 
@@ -186,8 +186,8 @@ sí pagaría cuesta **1** (margen no ganado). El umbral óptimo se eligió sobre
 
 | Umbral | Tasa de aprobación | Impago entre aprobados | Costo total | Costo por solicitud |
 |---|---:|---:|---:|---:|
-| 0.50 (por defecto) | 99.4 % | 7.8 % | 23 835 | 0.388 |
-| **0.16 (óptimo)** | **87.2 %** | **5.2 %** | **19 799** | **0.322** |
+| 0.50 (por defecto) | 99.3 % | 7.8 % | 23 862 | 0.388 |
+| **0.155 (óptimo)** | **86.6 %** | **5.2 %** | **19 744** | **0.321** |
 
 Resultados sobre el test congelado (61 503 solicitudes, fingerprint verificado antes de leerlo).
 
@@ -197,11 +197,12 @@ lo que confirma que las probabilidades están bien calibradas:
 
 | Ratio FN:FP | Umbral óptimo medido | Teoría `1/(ratio+1)` | Tasa de aprobación |
 |---|---:|---:|---:|
-| 1:1 | 0.535 | 0.500 | 99.6 % |
-| 5:1 | 0.160 | 0.167 | 87.3 % |
-| 10:1 | 0.090 | 0.091 | 73.2 % |
-| 20:1 | 0.045 | 0.048 | 48.6 % |
-| 50:1 | 0.020 | 0.020 | 17.5 % |
+| 1:1 | 0.530 | 0.500 | 99.6 % |
+| 2:1 | 0.365 | 0.333 | 97.9 % |
+| 5:1 | 0.155 | 0.167 | 86.6 % |
+| 10:1 | 0.085 | 0.091 | 71.2 % |
+| 20:1 | 0.045 | 0.048 | 48.1 % |
+| 50:1 | 0.020 | 0.020 | 16.7 % |
 
 ![Importancia de features](reports/figures/07_importancia_lgbm.png)
 
@@ -237,13 +238,12 @@ que el feature engineering no fue decorativo.
 
 **Dos casos reales, elegidos por su probabilidad mediana dentro de cada grupo** (no los extremos):
 
-- **Aprobado (P = 0.040):** la decisión se apoya en `goods_credit_ratio` y
-  `prev_credit_application_ratio` bajos y en un `prev_cnt_payment_max` de 12 cuotas. Su mayor empuje
-  al riesgo es que `EXT_SOURCE_1` viene **nula**: el modelo aprende que la ausencia de score externo
-  es señal, no ausencia de señal.
-- **Rechazado (P = 0.241):** `prev_refusal_rate = 0.89` (le rechazaron 8 de cada 9 solicitudes
-  previas) aporta +0.301, `EXT_SOURCE_3 = 0.36` aporta +0.302 y `bureau_debt_ratio = 0.99` suma
-  +0.188. Tres razones que un analista de crédito puede defender palabra por palabra.
+- **Aprobado (P = 0.040):** aprueba por el lado bueno —`cc_utilization_max = 0` (nunca usó el
+  límite de su tarjeta), una cuota baja para su ingreso y 8 años de antigüedad de coche. Ninguna de
+  sus cinco razones sube el riesgo, que es justo lo que se le dice al cliente.
+- **Rechazado (P = 0.240):** `EXT_SOURCE_3 = 0.30` aporta +0.532, un `goods_credit_ratio` de 0.70
+  (financia el 70 % del bien) suma +0.329 y `bureau_debt_ratio = 0.75` añade +0.157. Tres motivos
+  que un analista de crédito puede defender palabra por palabra.
 
 ### Reason codes
 
@@ -253,13 +253,13 @@ decisión:** un rechazo solo lleva motivos que suben el riesgo, y una aprobació
 bajan. Darle a un rechazado un argumento a su favor es confuso y, en banca, insostenible.
 
 ```json
-{"sk_id_curr": 288491, "probabilidad": 0.2413, "umbral": 0.16, "decision": "reject",
+{"sk_id_curr": 263625, "probabilidad": 0.2399, "umbral": 0.155, "decision": "reject",
  "razones": [
-   {"feature": "EXT_SOURCE_3",      "valor": 0.3573, "contribucion": 0.3024, "direccion": "aumenta_riesgo"},
-   {"feature": "prev_refusal_rate", "valor": 0.8889, "contribucion": 0.3012, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_1",      "valor": 0.2769, "contribucion": 0.2559, "direccion": "aumenta_riesgo"},
-   {"feature": "bureau_debt_ratio", "valor": 0.9933, "contribucion": 0.1883, "direccion": "aumenta_riesgo"},
-   {"feature": "inst_late_rate",    "valor": 0.1667, "contribucion": 0.1482, "direccion": "aumenta_riesgo"}
+   {"feature": "EXT_SOURCE_3",        "valor": 0.2956, "contribucion": 0.5323, "direccion": "aumenta_riesgo"},
+   {"feature": "goods_credit_ratio",  "valor": 0.7030, "contribucion": 0.3287, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_2",        "valor": 0.3532, "contribucion": 0.3122, "direccion": "aumenta_riesgo"},
+   {"feature": "bureau_debt_ratio",   "valor": 0.7537, "contribucion": 0.1569, "direccion": "aumenta_riesgo"},
+   {"feature": "prev_cnt_payment_max","valor": 36.0,   "contribucion": 0.1382, "direccion": "aumenta_riesgo"}
  ]}
 ```
 
@@ -272,32 +272,35 @@ Excluir `CODE_GENDER` del modelo no garantiza un resultado justo: el sesgo puede
 correlacionadas. Se auditan las **predicciones OOF** (las mismas con las que se eligió el umbral) y se
 mira cada grupo por separado: tasa de aprobación y mora **entre los aprobados**.
 
-| Género | n | Aprobación | Mora entre aprobados | Regla del 80 % |
-|---|---:|---:|---:|---:|
-| F | 161 887 | **89.3 %** | 4.8 % | 1.00 |
-| M | 84 119 | 83.5 % | 6.5 % | 0.93 |
+| Género | n | Aprobación | Aprobación entre los que pagan | Mora entre aprobados | Regla del 80 % |
+|---|---:|---:|---:|---:|---:|
+| F | 161 887 | **89.3 %** | **89.4 %** | 4.8 % | 1.00 |
+| M | 84 119 | 83.4 % | 83.5 % | 6.5 % | 0.93 |
 
-| Tramo de edad | n | Aprobación | Mora entre aprobados | Regla del 80 % |
-|---|---:|---:|---:|---:|
-| <25 | 9 841 | 72.9 % | 7.5 % | **0.74** |
-| 25-34 | 58 061 | 79.8 % | 6.5 % | 0.81 |
-| 35-44 | 67 372 | 87.2 % | 5.6 % | 0.88 |
-| 45-54 | 56 151 | 90.4 % | 5.0 % | 0.92 |
-| 55-64 | 48 357 | 94.6 % | 4.3 % | 0.96 |
-| 65+ | 6 226 | 98.6 % | 3.4 % | 1.00 |
+| Tramo de edad | n | Aprobación | Aprobación entre los que pagan | Mora entre aprobados | Regla del 80 % |
+|---|---:|---:|---:|---:|---:|
+| <25 | 9 841 | 72.8 % | **72.6 %** | 7.6 % | **0.74** |
+| 25-34 | 58 061 | 79.7 % | 79.8 % | 6.5 % | 0.81 |
+| 35-44 | 67 372 | 87.0 % | 87.2 % | 5.6 % | 0.88 |
+| 45-54 | 56 151 | 90.4 % | 90.6 % | 4.9 % | 0.92 |
+| 55-64 | 48 357 | 94.7 % | 94.8 % | 4.3 % | 0.96 |
+| 65+ | 6 226 | 98.7 % | 98.7 % | 3.4 % | 1.00 |
 
 ![Sesgo por grupo](reports/figures/12_sesgo_decision.png)
 
 **Lectura honesta de los dos resultados, que no son el mismo caso:**
 
-- **Género: cumple la regla del 80 %** (0.93). La brecha de aprobación (89.3 % vs 83.5 %)
-  acompaña a una brecha de mora en el mismo sentido (4.8 % vs 6.5 %): el grupo al que se aprueba
-  menos es el que efectivamente impaga más. No es evidente que haya discriminación, aunque tampoco
-  se puede demostrar lo contrario con una sola foto.
-- **Edad: no la cumple** (0.74). El modelo aprueba al 72.9 % de los menores de 25 y al 98.6 % de
-  los mayores de 65. La mora va en la misma dirección (7.5 % vs 3.4 %), así que la diferencia está
-  alineada con el riesgo — pero **que sea rentable no la hace automáticamente legal**, y en varios
-  marcos la edad es categoría protegida con matices. Queda como limitación declarada, no resuelta.
+- **Género: cumple la regla del 80 %** (0.93). La brecha de aprobación (89.3 % vs 83.4 %)
+  acompaña a una brecha de mora en el mismo sentido (4.8 % vs 6.5 %), y entre quienes pagan la
+  aprobación también se diferencia (89.4 % vs 83.5 %): parte de la brecha es riesgo, no toda. No es
+  evidencia de discriminación, pero tampoco lo contrario con una sola foto.
+- **Edad: no la cumple** (0.74). La prueba que importa es la columna "aprobación entre los que
+  pagan": entre quienes **sí** habrían pagado, se aprueba al **72.6 %** de los menores de 25 y al
+  **98.7 %** de los mayores de 65. Si la brecha la explicara el riesgo, esa columna debería ser
+  parecida en todos los tramos; no lo es. La mora también va en la misma dirección (7.6 % vs 3.4 %),
+  así que el modelo es rentable al hacerlo — pero **que sea rentable no lo hace automáticamente
+  legal**, y en varios marcos la edad es categoría protegida con matices. Queda como limitación
+  declarada, no resuelta.
 
 Se audita `CODE_GENDER` aunque no esté en el modelo precisamente porque la decisión puede seguir
 siendo desigual por variables correlacionadas.
@@ -339,7 +342,7 @@ seis figuras en [`reports/figures/`](reports/figures/).
   implementación lo tenía al revés (`p >= umbral`) y el resultado fue llamativo: el óptimo caía en
   el borde de la rejilla (0.01) y aprobaba al 97 % de los solicitantes *porque aprobaba a los más
   riesgosos*. Lo delató la aritmética, no un test: el umbral teórico para 5:1 es 1/6, no 0.01.
-- **0.5 no es un umbral, es una convención.** Con 8 % de mora, aprobar con 0.5 rechaza a 0.6 % de
+- **0.5 no es un umbral, es una convención.** Con 8 % de mora, aprobar con 0.5 rechaza a 0.7 % de
   la cartera: es una política disfrazada de decisión técnica. El corte calculado sí discrimina.
 - **ROC-AUC y PR-AUC en vez de accuracy:** con 92 % de buenos pagadores, un modelo que aprueba a
   todos tiene 92 % de accuracy y quiebra al banco.

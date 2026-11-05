@@ -28,8 +28,9 @@ SELECT
     max(NFLAG_INSURED_ON_APPROVAL)                                            AS prev_insured_max,
 
     -- antigüedad: DAYS_DECISION negativo = cuántos días antes de la solicitud actual
-    min(DAYS_DECISION)                                                        AS prev_days_last_decision,
-    max(DAYS_DECISION)                                                        AS prev_days_first_decision,
+    -- el más antiguo es el mínimo (más negativo); el más reciente, el máximo
+    min(DAYS_DECISION)                                                        AS prev_days_first_decision,
+    max(DAYS_DECISION)                                                        AS prev_days_last_decision,
 
     -- tipo de cliente: quien repite tiene historial, no es un desconocido
     avg(CASE WHEN NAME_CLIENT_TYPE = 'Repeater' THEN 1.0 ELSE 0.0 END)::DOUBLE AS prev_repeater_share
