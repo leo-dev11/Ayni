@@ -1,0 +1,40 @@
+{
+  "version_modelo": "latest",
+  "fingerprint_test": "86882d52ea880f41",
+  "n_test": 61503,
+  "roc_auc": 0.7829,
+  "pr_auc": 0.2774,
+  "umbral_optimo": {
+    "umbral": 0.16,
+    "n": 61503,
+    "aprobados": 53599,
+    "rechazados": 7904,
+    "falsos_negativos": 2810,
+    "falsos_positivos": 5749,
+    "costo": 19799.0,
+    "costo_fn": 5.0,
+    "costo_fp": 1.0,
+    "tasa_aprobacion": 0.8715,
+    "impago_entre_aprobados": 0.0524,
+    "costo_por_solicitud": 0.3219,
+    "aprobados_pagadores": 50789,
+    "rechazados_impagos": 2155
+  },
+  "umbral_050": {
+    "umbral": 0.5,
+    "n": 61503,
+    "aprobados": 61101,
+    "rechazados": 402,
+    "falsos_negativos": 4733,
+    "falsos_positivos": 170,
+    "costo": 23835.0,
+    "costo_fn": 5.0,
+    "costo_fp": 1.0,
+    "tasa_aprobacion": 0.9935,
+    "impago_entre_aprobados": 0.0775,
+    "costo_por_solicitud": 0.3875,
+    "aprobados_pagadores": 56368,
+    "rechazados_impagos": 232
+  },
+  "evaluado": "2026-11-05T12:16:43+00:00"
+}

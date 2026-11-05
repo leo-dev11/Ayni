@@ -13,10 +13,10 @@ El test no se toca aquí. Todo se mide con `StratifiedKFold` sobre `train.parque
 from __future__ import annotations
 
 import json
-import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import lightgbm as lgb
 import mlflow
@@ -32,16 +32,26 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 
-from ayni.config import ID_COL, RANDOM_STATE, REPORTS_DIR, ROOT, TARGET
+from ayni.config import (
+    ID_COL,
+    MLFLOW_DB,
+    MLFLOW_URI,
+    PROCESSED_DIR,
+    RANDOM_STATE,
+    REPORTS_DIR,
+    ROOT,
+    TARGET,
+)
 from ayni.split import TRAIN_PATH
 
 EXPERIMENT = "ayni"
 REGISTERED_MODEL = "ayni-lgbm"
-TRACKING_DB = ROOT / "mlflow.db"
-# Permite aislar pruebas y CI sin ensuciar el experimento real.
-TRACKING_URI = os.environ.get("AYNI_TRACKING_URI") or f"sqlite:///{TRACKING_DB.as_posix()}"
+TRACKING_DB = MLFLOW_DB
+TRACKING_URI = MLFLOW_URI
 MLRUNS_DIR = ROOT / "mlruns"
 FOLDS = 5
+OOF_DIR = PROCESSED_DIR / "oof"
+CATEGORIAS_PATH = PROCESSED_DIR / "categorias.json"
 
 # El modelo que se elige como campeón se decide con `roc_auc_cv`, nunca con el test.
 METRICAS = ("roc_auc", "pr_auc")
@@ -197,6 +207,33 @@ def validar_cruzado(
     return oof, por_fold, iteraciones
 
 
+def guardar_categorias(X: pd.DataFrame) -> Path:
+    """Vocabulario de categorías de train.
+
+    Sin él, cada frame (test, API) codifica `ORGANIZATION_TYPE` con sus propios códigos y
+    LightGBM compara números que significan cosas distintas. Se fija una vez y se reutiliza.
+    """
+    vocabulario = {
+        columna: X[columna].cat.categories.astype(str).tolist()
+        for columna in X.columns
+        if isinstance(X[columna].dtype, pd.CategoricalDtype)
+    }
+    CATEGORIAS_PATH.write_text(
+        json.dumps(vocabulario, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return CATEGORIAS_PATH
+
+
+def guardar_oof(nombre: str, ids: pd.Series, y: pd.Series, proba: np.ndarray) -> Path:
+    """Persiste las probabilidades out-of-fold: con ellas se elige el umbral en la fase 5."""
+    OOF_DIR.mkdir(parents=True, exist_ok=True)
+    destino = OOF_DIR / f"{nombre}.parquet"
+    pd.DataFrame({ID_COL: ids.to_numpy(), "y": y.to_numpy(), "proba": proba}).to_parquet(
+        destino, index=False
+    )
+    return destino
+
+
 def importancia(modelo: lgb.LGBMClassifier, columnas) -> pd.DataFrame:
     return (
         pd.DataFrame({"feature": columnas, "importancia": modelo.feature_importances_})
@@ -315,6 +352,7 @@ def main(
     train = pd.read_parquet(TRAIN_PATH)
     ratio = float((train[TARGET] == 0).sum() / train[TARGET].sum())
     print(f"train: {len(train):,} filas · ratio 0:1 = {ratio:.2f}")
+    guardar_categorias(preparar(train)[0])
 
     lgbm_base = {
         "learning_rate": 0.05,
@@ -347,6 +385,7 @@ def main(
     for nombre, familia, params, con_genero in plan:
         X, y = preparar(train, con_genero=con_genero)
         corrida = evaluar(nombre, familia, params, con_genero, X=X, y=y, folds=folds)
+        guardar_oof(nombre, train.loc[X.index, ID_COL], y, corrida.oof)
         registrar(corrida, X, y)
         corridas.append(corrida)
 
@@ -390,7 +429,8 @@ def main(
             {c.nombre: {**c.metricas, "run_id": c.run_id} for c in corridas},
             indent=2,
             ensure_ascii=False,
-        ),
+        )
+        + "\n",
         encoding="utf-8",
     )
     print(f"\nresumen en {destino.relative_to(ROOT)}")

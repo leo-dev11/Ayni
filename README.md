@@ -16,24 +16,29 @@
 
 ## Resultados clave
 
-**Validación cruzada de 5 folds sobre el 80 % de train. El test sigue sin tocarse.**
+**Evaluación final en el test congelado (61 503 solicitudes), leído una sola vez.**
 
-- **ROC-AUC 0.780** con LightGBM frente a **0.766** del baseline logístico: la complejidad del
-  modelo aporta **+0.014 AUC**.
-- **PR-AUC 0.270** (baseline 0.244), que es la métrica honesta con 8 % de positivos.
+- **ROC-AUC 0.783** y **PR-AUC 0.277** en test (validación cruzada: 0.780 / 0.270). Sin sorpresa
+  desagradable: el modelo generaliza.
+- **El umbral óptimo no es 0.5, es 0.16.** Aprobar con 0.5 equivale a aprobar al 99.4 % de los
+  solicitantes; el corte calculado aprueba al **87.2 %**.
+- **El costo total baja un 16.9 %** (23 835 → 19 799) y la mora entre aprobados cae del
+  **7.8 % al 5.2 %**.
 - **Excluir `CODE_GENDER` cuesta +0.0002 AUC.** Dos diezmilésimas. La decisión de la fase 1 queda
   con su precio publicado, y no hay argumento de rendimiento para revertirla.
 - **`scale_pos_weight` empeora el modelo** (0.7774 vs 0.7796): el desbalance se trata en el umbral
   de decisión, no en el entrenamiento.
 
-| Métrica | Valor |
-|---|---|
-| ROC-AUC · LightGBM (CV) | **0.7800** ± 0.0026 |
-| ROC-AUC · baseline logístico (CV) | 0.7658 ± 0.0019 |
-| PR-AUC · LightGBM (CV) | **0.2697** |
-| PR-AUC · baseline logístico (CV) | 0.2440 |
-| ROC-AUC en test | pendiente (fase 5) |
-| Costo total vs. umbral 0.5 | pendiente (fase 5) |
+![Costo vs umbral](reports/figures/08_costo_vs_umbral.png)
+
+| Métrica | Validación cruzada | Test |
+|---|---|---|
+| ROC-AUC · LightGBM | **0.7800** ± 0.0026 | **0.7829** |
+| PR-AUC · LightGBM | **0.2697** | **0.2774** |
+| ROC-AUC · baseline logístico | 0.7658 ± 0.0019 | — |
+| PR-AUC · baseline logístico | 0.2440 | — |
+| Costo total al umbral 0.5 | 95 805 (0.389/solicitud) | 23 835 (0.388/solicitud) |
+| Costo total al umbral 0.16 | **80 303 (0.326/solicitud)** | **19 799 (0.322/solicitud)** |
 
 ---
 
@@ -153,14 +158,32 @@ registradas en MLflow; el campeón es `lgbm-ajustado` (v1 del Registry).
 
 | ROC-AUC (test) | PR-AUC (test) |
 |---|---|
-| pendiente (fase 5) | pendiente (fase 5) |
+| **0.7829** | **0.2774** |
 
 ### Decisión por costo
 
-| Umbral | Tasa de aprobación | Impago entre aprobados | Costo total |
-|---|---|---|---|
-| 0.50 (por defecto) | _pendiente_ | _pendiente_ | _pendiente_ |
-| Óptimo por costo: _—_ | _pendiente_ | _pendiente_ | _pendiente_ |
+Matriz documentada: aprobar a quien no paga cuesta **5** (pérdida de principal) y rechazar a quien
+sí pagaría cuesta **1** (margen no ganado). El umbral óptimo se eligió sobre las predicciones
+**out-of-fold**, nunca sobre el test.
+
+| Umbral | Tasa de aprobación | Impago entre aprobados | Costo total | Costo por solicitud |
+|---|---:|---:|---:|---:|
+| 0.50 (por defecto) | 99.4 % | 7.8 % | 23 835 | 0.388 |
+| **0.16 (óptimo)** | **87.2 %** | **5.2 %** | **19 799** | **0.322** |
+
+Resultados sobre el test congelado (61 503 solicitudes, fingerprint verificado antes de leerlo).
+
+**El umbral sigue a los costos, no al modelo.** Con un modelo calibrado, el corte que iguala costo
+marginal de aprobar y de rechazar vale `1/(ratio+1)`; el barrido empírico lo reproduce casi exacto,
+lo que confirma que las probabilidades están bien calibradas:
+
+| Ratio FN:FP | Umbral óptimo medido | Teoría `1/(ratio+1)` | Tasa de aprobación |
+|---|---:|---:|---:|
+| 1:1 | 0.535 | 0.500 | 99.6 % |
+| 5:1 | 0.160 | 0.167 | 87.3 % |
+| 10:1 | 0.090 | 0.091 | 73.2 % |
+| 20:1 | 0.045 | 0.048 | 48.6 % |
+| 50:1 | 0.020 | 0.020 | 17.5 % |
 
 ![Importancia de features](reports/figures/07_importancia_lgbm.png)
 
@@ -188,7 +211,14 @@ _Pendientes de las fases 5 y 6: costo vs. umbral y SHAP summary._
 
 > Esta sección se amplía fase por fase; la versión detallada, con alternativas descartadas y números, está en la bitácora.
 
-- **ROC-AUC y PR-AUC en vez de accuracy:** con 92 % de buenos pagadores, un modelo que aprueba a todos tiene 92 % de accuracy y quiebra al banco.
+- **El umbral es un techo de riesgo, no un piso.** Se aprueba si `P(impago) ≤ umbral`. La primera
+  implementación lo tenía al revés (`p >= umbral`) y el resultado fue llamativo: el óptimo caía en
+  el borde de la rejilla (0.01) y aprobaba al 97 % de los solicitantes *porque aprobaba a los más
+  riesgosos*. Lo delató la aritmética, no un test: el umbral teórico para 5:1 es 1/6, no 0.01.
+- **0.5 no es un umbral, es una convención.** Con 8 % de mora, aprobar con 0.5 rechaza a 0.6 % de
+  la cartera: es una política disfrazada de decisión técnica. El corte calculado sí discrimina.
+- **ROC-AUC y PR-AUC en vez de accuracy:** con 92 % de buenos pagadores, un modelo que aprueba a
+  todos tiene 92 % de accuracy y quiebra al banco.
 - **LightGBM como modelo principal, regresión logística como baseline:** los datos son tabulares, con nulos y categóricas de alta cardinalidad; el baseline existe para demostrar cuánto aporta la complejidad, no para competir.
 - **Agregaciones en SQL sobre DuckDB en vez de `groupby` en pandas:** las tablas relacionadas tienen decenas de millones de filas; el SQL es reproducible, legible y no exige cargar todo en RAM.
 - **El test no se toca hasta el final:** cada decisión de features, hiperparámetros y umbral se toma en validación. Un test consultado dos veces deja de ser test.
@@ -211,7 +241,7 @@ _Pendientes de las fases 5 y 6: costo vs. umbral y SHAP summary._
 
 ## Limitaciones y trabajo futuro
 
-- **La matriz de costos es supuesta.** 5:1 es un supuesto de negocio razonable, no un dato del banco. El pipeline la deja como parámetro para poder recalcular el umbral con costos reales.
+- **La matriz de costos es supuesta.** 5:1 es un supuesto de negocio razonable, no un dato del banco. El pipeline la deja como parámetro: con 20:1 el umbral baja a 0.045 y se aprueba al 48.6 %, así que **la política de riesgo se cambia sin reentrenar**, solo moviendo dos números.
 - **El drift es simulado.** Se alteran features del test a propósito; detectar ese drift prueba que el monitoreo funciona, no que el modelo aguante producción real.
 - **Riesgo de sesgo.** Edad y género correlacionan con el target y con decisiones históricas; el modelo puede heredar discriminación aunque no las use directamente.
 - **Una sola foto temporal.** No hay validación out-of-time porque el dataset no trae fechas de originación reales.

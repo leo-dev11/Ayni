@@ -1,5 +1,6 @@
 """Rutas y constantes compartidas del proyecto."""
 
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -12,6 +13,10 @@ PROCESSED_DIR = DATA_DIR / "processed"
 SQL_DIR = ROOT / "sql"
 REPORTS_DIR = ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
+
+MLFLOW_DB = ROOT / "mlflow.db"
+# Permite aislar pruebas y CI del experimento real.
+MLFLOW_URI = os.environ.get("AYNI_TRACKING_URI") or f"sqlite:///{MLFLOW_DB.as_posix()}"
 
 RANDOM_STATE = 42
 TARGET = "TARGET"

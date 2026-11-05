@@ -58,5 +58,5 @@ def make_split(
         "test_fingerprint": fingerprint(test[ID_COL]),
         "generado": datetime.now(UTC).isoformat(timespec="seconds"),
     }
-    SPLIT_META.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+    SPLIT_META.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return meta

@@ -44,6 +44,8 @@ reports/drift/
 reports/*.html
 reports/importancia_*.csv
 reports/resumen_corridas.json
+reports/curva_costo.csv
+reports/sensibilidad_costos.csv
 *.log
 
 # ── Sistema / IDE ──────────────────────────────────────────────

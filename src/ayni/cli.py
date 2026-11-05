@@ -55,7 +55,6 @@ si no, Kaggle responde 403 aunque el token sea correcto.
 """
 
 PENDING = {
-    "evaluate": "fase 5 · umbral de decisión por costo",
     "drift": "fase 9 · monitoreo de drift",
 }
 
@@ -180,6 +179,20 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_evaluate(args: argparse.Namespace) -> int:
+    from ayni.evaluate import elegir_umbral, evaluar_test  # noqa: PLC0415
+
+    elegir_umbral(args.corrida)
+    if not args.confirmar_test:
+        print(
+            "\nEl test sigue cerrado. Para la evaluación final (una sola vez):\n"
+            "  python -m ayni evaluate --confirmar-test"
+        )
+        return 0
+    evaluar_test(args.version)
+    return 0
+
+
 def cmd_features(args: argparse.Namespace) -> int:
     if FEATURES_PATH.exists() and not args.force:
         print(f"Ya existe {FEATURES_PATH.name}; usa --force para regenerarlo.")
@@ -242,6 +255,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-register", action="store_true", help="no registra el mejor modelo en el Registry"
     )
     p_train.set_defaults(func=cmd_train)
+
+    p_eval = sub.add_parser("evaluate", help="umbral por costo (y evaluación final en test)")
+    p_eval.add_argument("--corrida", default="lgbm-ajustado", help="OOF a usar")
+    p_eval.add_argument(
+        "--confirmar-test", action="store_true", help="lee el test congelado (una sola vez)"
+    )
+    p_eval.add_argument("--version", default="latest", help="versión del modelo registrado")
+    p_eval.set_defaults(func=cmd_evaluate)
 
     p_features = sub.add_parser("features", help="ejecuta los .sql y genera features.parquet")
     p_features.add_argument("--force", action="store_true", help="regenera aunque ya exista")
