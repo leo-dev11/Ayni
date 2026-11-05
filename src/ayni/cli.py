@@ -12,7 +12,9 @@ import sys
 import zipfile
 
 from ayni.config import RAW_DIR, TABLES
+from ayni.features import FEATURES_PATH, build_features
 from ayni.ingest import describe, missing_raw, to_parquet
+from ayni.split import TEST_PATH, TRAIN_PATH, make_split
 
 COMPETITION = "home-credit-default-risk"
 ZIP_NAME = f"{COMPETITION}.zip"
@@ -45,7 +47,6 @@ si no, Kaggle responde 403 aunque el token sea correcto.
 """
 
 PENDING = {
-    "features": "fase 2 · feature engineering con SQL",
     "train": "fase 4 · modelado y experimentos",
     "evaluate": "fase 5 · umbral de decisión por costo",
     "drift": "fase 9 · monitoreo de drift",
@@ -125,6 +126,30 @@ def cmd_check(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_features(args: argparse.Namespace) -> int:
+    if FEATURES_PATH.exists() and not args.force:
+        print(f"Ya existe {FEATURES_PATH.name}; usa --force para regenerarlo.")
+        return 0
+    print("Construyendo features desde los .sql de sql/…")
+    build_features(force=True)
+    return 0
+
+
+def cmd_split(args: argparse.Namespace) -> int:
+    if not FEATURES_PATH.exists():
+        print("No hay features.parquet. Ejecuta primero: python -m ayni features")
+        return 1
+    if TRAIN_PATH.exists() and not args.force:
+        print(f"Ya existe el split ({TRAIN_PATH.name} / {TEST_PATH.name}); usa --force.")
+        return 0
+    meta = make_split()
+    print(f"  train: {meta['n_train']:,} filas ({meta['tasa_train']:.2%} de impago)")
+    print(f"  test : {meta['n_test']:,} filas ({meta['tasa_test']:.2%} de impago)")
+    print(f"  fingerprint del test: {meta['test_fingerprint']}")
+    print("\nEl test queda congelado: no se usa hasta la evaluación final de la fase 5.")
+    return 0
+
+
 def cmd_pending(args: argparse.Namespace) -> int:
     print(f"'{args.command}' todavía no existe: {PENDING[args.command]}")
     return 1
@@ -149,6 +174,14 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("check", help="lista filas y columnas de cada Parquet").set_defaults(
         func=cmd_check
     )
+
+    p_features = sub.add_parser("features", help="ejecuta los .sql y genera features.parquet")
+    p_features.add_argument("--force", action="store_true", help="regenera aunque ya exista")
+    p_features.set_defaults(func=cmd_features)
+
+    p_split = sub.add_parser("split", help="split estratificado 80/20 con test congelado")
+    p_split.add_argument("--force", action="store_true", help="vuelve a generar el split")
+    p_split.set_defaults(func=cmd_split)
 
     for name, phase in PENDING.items():
         sub.add_parser(name, help=f"pendiente — {phase}").set_defaults(func=cmd_pending)

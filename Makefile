@@ -46,6 +46,7 @@ check:
 
 features:
 	$(RUN) features
+	$(RUN) split
 
 train:
 	$(RUN) train
