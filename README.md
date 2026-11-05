@@ -71,7 +71,10 @@ curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
 Y la explicación de esa misma decisión, con las razones que se le darían al cliente:
 
 ```bash
-curl -X POST localhost:8000/explain -H "Content-Type: application/json" -d @cliente.json
+curl -X POST localhost:8000/explain -H "Content-Type: application/json"   -d '{"amt_income_total": 96000, "amt_credit": 900000, "amt_annuity": 45000,
+       "age_years": 23, "years_employed": null, "ext_source_1": 0.12,
+       "ext_source_2": 0.18, "ext_source_3": 0.09,
+       "bureau_debt_ratio": 0.95, "prev_refusal_rate": 0.9}'
 ```
 
 ```json
@@ -120,7 +123,7 @@ El campo `cobertura` dice qué fracción de los 185 campos del modelo llegó en 
 
 ```mermaid
 flowchart LR
-    A[CSV crudos<br/>~2.5 GB] --> B[DuckDB<br/>SQL de agregación]
+    A[CSV crudos<br/>3.2 GB] --> B[DuckDB<br/>SQL de agregación]
     B --> C[features.parquet]
     C --> D{Pandera<br/>valida esquema}
     D -->|falla| X[Pipeline aborta]
@@ -138,7 +141,7 @@ flowchart LR
 6. **Umbral por costo.** Se recorre la curva de umbrales y se elige el que minimiza el costo esperado, con la matriz documentada.
 7. **Explicación dentro del servicio.** SHAP global para el reporte, SHAP local convertido en *reason codes* para cada decisión individual.
 8. **Trazabilidad completa.** Cada corrida queda en MLflow y el mejor modelo va al Model Registry con su umbral pegado al artefacto.
-9. **Compuerta de calidad.** `ayni evaluate` falla si el ROC-AUC del test baja de **0.75**, y CI corre los 51 tests en cada push sin necesitar el dataset: todo se construye con datos sintéticos y modelos diminutos.
+9. **Compuerta de calidad.** `ayni evaluate` falla si el ROC-AUC del test baja de **0.75**, y CI corre los 57 tests en cada push sin necesitar el dataset: todo se construye con datos sintéticos y modelos diminutos.
 
 ---
 
@@ -333,14 +336,16 @@ ayni data                        # verifica que estén las 8 tablas
 ayni parquet                     # CSV → Parquet en data/interim
 
 # 3. Pipeline
-make features      # SQL en DuckDB → data/processed/features.parquet
-make train         # entrena y registra en MLflow
-make evaluate      # umbral por costo + evaluación final en test
-ayni explain                      # SHAP global, local y reason codes
-ayni export-model                 # artefacto para la API
+make features                       # SQL en DuckDB → features.parquet + split
+make train                          # 5 corridas con CV + registro en MLflow
+make explain                        # SHAP global, local y reason codes
+make evaluate                       # umbral por costo sobre las predicciones OOF
+ayni evaluate --confirmar-test      # evaluación final: lee el test congelado
+make export                         # artefacto de modelo para la API
+make drift                          # simula producción y mide drift
 
 # 4. Servicios
-docker compose up  # API :8000/docs · MLflow :5000
+docker compose up                   # API :8000/docs · MLflow :5000
 
 # 5. Calidad
 pytest
@@ -404,4 +409,4 @@ Ayni/
 ---
 
 **Stack:** Python 3.13 · DuckDB · pandas · PyArrow · scikit-learn · LightGBM · MLflow · SHAP · Pandera · Evidently · FastAPI · Docker · GitHub Actions · ruff
-**Autor:** Leonardo Joaquín Rodríguez · [GitHub](https://github.com/leo-dev11) · Licencia MIT
+**Autor:** Leonardo Joaquín Rodríguez · [GitHub](https://github.com/leo-dev11) · [Licencia MIT](LICENSE)
