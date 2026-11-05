@@ -179,6 +179,13 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_model(args: argparse.Namespace) -> int:
+    from ayni.export import exportar  # noqa: PLC0415
+
+    exportar(version=args.version)
+    return 0
+
+
 def cmd_explain(args: argparse.Namespace) -> int:
     from ayni.explain import ejecutar  # noqa: PLC0415
 
@@ -262,6 +269,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-register", action="store_true", help="no registra el mejor modelo en el Registry"
     )
     p_train.set_defaults(func=cmd_train)
+
+    p_export = sub.add_parser("export-model", help="deja el modelo listo para la API")
+    p_export.add_argument("--version", default="latest", help="versión del modelo")
+    p_export.set_defaults(func=cmd_export_model)
 
     p_explain = sub.add_parser("explain", help="SHAP global, local y reason codes")
     p_explain.add_argument("--version", default="latest", help="versión del modelo")

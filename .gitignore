@@ -39,6 +39,9 @@ mlartifacts/
 mlflow.db
 mlflow-artifacts/
 
+# ── Artefacto de servicio (se regenera con `ayni export-model`) ─
+models/
+
 # ── Artefactos generados por el pipeline ───────────────────────
 reports/drift/
 reports/*.html

@@ -54,37 +54,39 @@ Ayni cubre las tres cosas: la predicción, la decisión por costo y la explicaci
 
 ## Uso rápido
 
-> Aún no ejecutable: el servicio se implementa en la fase 7. Lo que sigue es el uso previsto,
-> no una demostración que funcione hoy.
-
 ```bash
+ayni export-model        # deja el modelo y el umbral en models/
 docker compose up        # API en :8000/docs · MLflow en :5000
 ```
 
 ```bash
 curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
-  -d '{"AMT_INCOME_TOTAL": 180000, "AMT_CREDIT": 450000, "AMT_ANNUITY": 24500,
-       "DAYS_BIRTH": -12400, "DAYS_EMPLOYED": -1400, "CODE_GENDER": "F",
-       "NAME_CONTRACT_TYPE": "Cash loans"}'
+  -d '{"amt_income_total": 180000, "amt_credit": 450000, "amt_annuity": 24500,
+       "age_years": 34, "years_employed": 4, "ext_source_1": 0.55,
+       "ext_source_2": 0.61, "ext_source_3": 0.40, "contract_type": "Cash loans"}'
 ```
-
-Respuesta esperada:
 
 ```json
-{"probability": 0.09, "decision": "approve", "threshold": 0.23, "model_version": "..."}
+{"probabilidad": 0.0928, "decision": "approve", "umbral": 0.16, "modelo_version": "latest"}
 ```
+
+Y la explicación de esa misma decisión, con las razones que se le darían al cliente:
 
 ```bash
-curl -X POST localhost:8000/explain -H "Content-Type: application/json" -d @client.json
+curl -X POST localhost:8000/explain -H "Content-Type: application/json" -d @cliente.json
 ```
 
 ```json
-{"probability": 0.41, "decision": "reject",
- "reasons": [
-   {"feature": "EXT_SOURCE_2", "contribution": -0.31, "direction": "increases_risk"},
-   {"feature": "credit_income_ratio", "contribution": -0.12, "direction": "increases_risk"}
+{"probabilidad": 0.0804, "decision": "approve", "umbral": 0.16, "cobertura": 0.059,
+ "razones": [
+   {"feature": "annuity_income_ratio", "valor": 0.469, "contribucion": 0.069,  "direccion": "aumenta_riesgo"},
+   {"feature": "age_years",            "valor": 23.0,  "contribucion": -0.033, "direccion": "reduce_riesgo"},
+   {"feature": "credit_income_ratio",  "valor": 9.375, "contribucion": 0.018,  "direccion": "aumenta_riesgo"}
  ]}
 ```
+
+El campo `cobertura` dice qué fracción de los 185 campos del modelo llegó en el payload, y
+`advertencia` se activa si es baja: el servicio nunca inventa razones sobre datos que no recibió.
 
 ---
 
@@ -322,7 +324,9 @@ ayni parquet                     # CSV → Parquet en data/interim
 # 3. Pipeline
 make features      # SQL en DuckDB → data/processed/features.parquet
 make train         # entrena y registra en MLflow
-make evaluate      # métricas en test, umbral por costo y figuras SHAP
+make evaluate      # umbral por costo + evaluación final en test
+ayni explain                      # SHAP global, local y reason codes
+ayni export-model                 # artefacto para la API
 
 # 4. Servicios
 docker compose up  # API :8000/docs · MLflow :5000
@@ -343,35 +347,44 @@ En Windows no hay `make`: cada target existe también como subcomando de `ayni`
 Ayni/
 ├── data/
 │   ├── raw/                      # CSV de Kaggle (no versionado)
-│   └── processed/                # features.parquet (no versionado)
-├── sql/
+│   ├── interim/                  # Parquet por tabla (no versionado)
+│   └── processed/                # features, split y OOF (no versionado)
+├── sql/                          # una consulta de agregación por tabla
 │   ├── bureau_agg.sql
 │   ├── previous_agg.sql
 │   ├── installments_agg.sql
 │   └── credit_card_agg.sql
-├── notebooks/
-│   └── 01_eda.ipynb
+├── notebooks/01_eda.ipynb
+├── models/                       # booster + manifest (no versionado)
 ├── src/ayni/
-│   ├── features.py               # ejecuta los SQL en DuckDB y une todo
+│   ├── config.py                 # rutas y constantes
+│   ├── ingest.py                 # CSV → Parquet con DuckDB
+│   ├── features.py               # SQL de agregación + ratios
+│   ├── split.py                  # split estratificado con fingerprint
 │   ├── schema.py                 # esquemas Pandera
-│   ├── train.py                  # entrenamiento + registro en MLflow
-│   ├── threshold.py              # umbral óptimo por costo
-│   ├── explain.py                # SHAP global y por cliente
-│   ├── drift.py                  # reporte de drift con Evidently
-│   └── api.py                    # servicio FastAPI
+│   ├── train.py                  # CV + MLflow + Model Registry
+│   ├── threshold.py              # decisión por costo
+│   ├── evaluate.py               # umbral OOF y evaluación en test
+│   ├── explain.py                # SHAP global, local y reason codes
+│   ├── export.py                 # artefacto para servir
+│   ├── api.py                    # FastAPI: /health, /predict, /explain
+│   └── cli.py                    # python -m ayni <comando>
 ├── tests/
-│   ├── fixtures/                 # muestra mínima para CI
+│   ├── fixtures/
+│   ├── test_api.py
+│   ├── test_explain.py
 │   ├── test_features.py
 │   ├── test_schema.py
-│   ├── test_model_quality.py
-│   └── test_api.py
+│   ├── test_threshold.py
+│   └── test_train.py
 ├── reports/
-│   └── figures/
-├── .github/workflows/ci.yml
+│   ├── figures/                  # 10 figuras del proyecto
+│   ├── umbral.json
+│   └── evaluacion_test.json
 ├── Dockerfile
 ├── docker-compose.yml
-├── Makefile
-├── requirements.txt
+├── requirements-api.txt          # dependencias solo del servicio
+├── requirements.txt              # entrenamiento y análisis
 └── README.md
 ```
 

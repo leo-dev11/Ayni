@@ -15,6 +15,7 @@ Las explicaciones se calculan sobre `train`, nunca sobre el test.
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -32,6 +33,9 @@ import shap
 from ayni.config import ID_COL, MLFLOW_URI, PROCESSED_DIR, REPORTS_DIR, ROOT, TARGET
 from ayni.evaluate import aplicar_categorias
 from ayni.split import TRAIN_PATH
+
+# shap avisa en cada llamada de que LightGBM binario devuelve una lista; ya se normaliza.
+warnings.filterwarnings("ignore", message=".*shap values output has changed.*")
 
 CATEGORIAS_PATH = PROCESSED_DIR / "categorias.json"
 UMBRAL_PATH = REPORTS_DIR / "umbral.json"

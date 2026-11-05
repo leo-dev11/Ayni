@@ -1,0 +1,21 @@
+.git
+.github
+.venv
+__pycache__
+*.egg-info
+*.pyc
+.pytest_cache
+.ruff_cache
+
+# datos y artefactos que no hacen falta para servir
+data/
+mlruns/
+mlflow.db
+*.log
+
+# material de desarrollo
+notebooks/
+tests/
+docs/
+reports/
+.smoke.db
