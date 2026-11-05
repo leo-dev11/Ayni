@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/leo-dev11/Ayni/actions/workflows/ci.yml/badge.svg)
 
-**Scoring de riesgo crediticio end-to-end: el umbral se elige por costo, cada rechazo viene con sus razones y el drift se monitorea.**
+**Scoring de riesgo crediticio end-to-end: el umbral se elige por costo, cada rechazo viene justificado y el drift monitoreado.**
 
 > *Ayni* es el principio andino de reciprocidad: dar y devolver. El crédito funciona igual, sobre la confianza de que lo recibido será devuelto.
 
