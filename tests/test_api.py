@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from lightgbm import LGBMClassifier
 
-from ayni.api import cargar_servicio, crear_app
+from ayni.api import COBERTURA_MINIMA, cargar_servicio, crear_app
 
 COLUMNAS = [
     "AMT_INCOME_TOTAL",
@@ -101,11 +101,11 @@ def test_las_razones_solo_hablan_de_campos_enviados(cliente_api):
     assert usadas <= enviados
 
 
-def test_cobertura_y_advertencia_con_payload_incompleto(cliente_api):
+def test_la_advertencia_salta_exactamente_cuando_la_cobertura_es_baja(cliente_api):
     datos = cliente_api.post("/explain", json=PAYLOAD).json()
 
     assert 0 < datos["cobertura"] < 1
-    assert datos["advertencia"]
+    assert (datos["advertencia"] is not None) == (datos["cobertura"] < COBERTURA_MINIMA)
 
 
 def test_entrada_invalida_se_rechaza(cliente_api):

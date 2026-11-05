@@ -76,5 +76,5 @@ def test_diccionario_serializable_para_la_api(modelo_y_datos):
 
     razon = razones(explicador, X.iloc[[1]], top=1)[0].a_dict()
 
-    assert set(razon) == {"feature", "valor", "shap", "direccion"}
-    assert isinstance(razon["shap"], float)
+    assert set(razon) == {"feature", "valor", "contribucion", "direccion"}
+    assert isinstance(razon["contribucion"], float)

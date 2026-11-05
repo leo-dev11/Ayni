@@ -52,42 +52,55 @@ Ayni cubre las tres cosas: la predicción, la decisión por costo y la explicaci
 
 ## Uso rápido
 
+> Requiere el entorno instalado y el modelo exportado; los pasos completos están en
+> [Cómo reproducirlo](#cómo-reproducirlo).
+
 ```bash
 ayni export-model        # deja el modelo y el umbral en models/
 docker compose up        # API en :8000/docs · MLflow en :5000
 ```
 
 ```bash
-curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
+curl -X POST localhost:8000/predict \
+  -H "Content-Type: application/json" \
   -d '{"amt_income_total": 180000, "amt_credit": 450000, "amt_annuity": 24500,
        "age_years": 34, "years_employed": 4, "ext_source_1": 0.55,
        "ext_source_2": 0.61, "ext_source_3": 0.40, "contract_type": "Cash loans"}'
 ```
 
 ```json
-{"probabilidad": 0.0928, "decision": "approve", "umbral": 0.16, "modelo_version": "latest"}
+{"probabilidad": 0.0888, "decision": "approve", "umbral": 0.16, "modelo_version": "latest"}
 ```
 
-Y la explicación de esa misma decisión, con las razones que se le darían al cliente:
+Y la explicación de un cliente de alto riesgo, con las razones que se le darían al rechazarlo:
 
 ```bash
-curl -X POST localhost:8000/explain -H "Content-Type: application/json"   -d '{"amt_income_total": 96000, "amt_credit": 900000, "amt_annuity": 45000,
-       "age_years": 23, "years_employed": null, "ext_source_1": 0.12,
-       "ext_source_2": 0.18, "ext_source_3": 0.09,
-       "bureau_debt_ratio": 0.95, "prev_refusal_rate": 0.9}'
+curl -X POST localhost:8000/explain \
+  -H "Content-Type: application/json" \
+  -d '{"amt_income_total": 96000, "amt_credit": 900000, "amt_annuity": 45000,
+       "age_years": 23, "children": 3, "family_members": 5,
+       "ext_source_1": 0.12, "ext_source_2": 0.18, "ext_source_3": 0.09,
+       "education": "Lower secondary", "occupation": "Low-skill Laborers",
+       "organization": "Self-employed", "bureau_debt_ratio": 0.95,
+       "prev_refusal_rate": 0.9, "inst_late_rate": 0.45}'
 ```
 
 ```json
-{"probabilidad": 0.0804, "decision": "approve", "umbral": 0.16, "cobertura": 0.059,
+{"probabilidad": 0.7976, "decision": "reject", "umbral": 0.16, "modelo_version": "latest",
  "razones": [
-   {"feature": "annuity_income_ratio", "valor": 0.469, "contribucion": 0.069,  "direccion": "aumenta_riesgo"},
-   {"feature": "age_years",            "valor": 23.0,  "contribucion": -0.033, "direccion": "reduce_riesgo"},
-   {"feature": "credit_income_ratio",  "valor": 9.375, "contribucion": 0.018,  "direccion": "aumenta_riesgo"}
- ]}
+   {"feature": "EXT_SOURCE_3",       "valor": 0.09,           "contribucion": 1.0186, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_2",       "valor": 0.18,           "contribucion": 0.5859, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_1",       "valor": 0.12,           "contribucion": 0.4990, "direccion": "aumenta_riesgo"},
+   {"feature": "bureau_debt_ratio",  "valor": 0.95,           "contribucion": 0.2426, "direccion": "aumenta_riesgo"},
+   {"feature": "ORGANIZATION_TYPE",  "valor": "Self-employed", "contribucion": 0.2309, "direccion": "aumenta_riesgo"}
+ ],
+ "cobertura": 0.141, "advertencia": null}
 ```
 
-El campo `cobertura` dice qué fracción de los 185 campos del modelo llegó en el payload, y
-`advertencia` se activa si es baja: el servicio nunca inventa razones sobre datos que no recibió.
+`cobertura` es la fracción de los 185 campos del modelo que llegó en la petición, y `advertencia` se
+activa si es muy baja: el servicio no inventa razones sobre datos que no recibió. El contrato HTTP
+cubre como máximo el **15.7 %** de esos 185 campos (el resto son columnas del expediente que el
+modelo usa y la API no pide); los que faltan viajan como nulos, igual que en el entrenamiento.
 
 ---
 
@@ -137,7 +150,7 @@ flowchart LR
 2. **Validación antes de modelar.** Tres esquemas Pandera (tabla cruda, features, particiones) cortan el pipeline si aparecen tipos, rangos o nulos imposibles; `ayni validate` comprueba lo ya escrito y devuelve código de salida 1. Un CSV corrupto de prueba en `tests/fixtures/` demuestra que el corte funciona.
 3. **Split estratificado 80/20 con semilla fija.** El 20 % de test no se toca hasta la evaluación final; todo lo demás se decide en validación cruzada.
 4. **Dos métricas, no una.** ROC-AUC para comparar con el estándar de la competencia y PR-AUC porque con 8 % de positivos es la lectura honesta.
-5. **Desbalance por pesos, no por resampling.** Se compara `scale_pos_weight` contra no ajustar, y decide la métrica, no la intuición.
+5. **Se comparó el peso de clases contra no usarlo.** `scale_pos_weight` bajó el ROC-AUC (0.7774 vs 0.7796): el desbalance se resuelve en el umbral de decisión, no recoloreando el entrenamiento.
 6. **Umbral por costo.** Se recorre la curva de umbrales y se elige el que minimiza el costo esperado, con la matriz documentada.
 7. **Explicación dentro del servicio.** SHAP global para el reporte, SHAP local convertido en *reason codes* para cada decisión individual.
 8. **Trazabilidad completa.** Cada corrida queda en MLflow y el mejor modelo va al Model Registry con su umbral pegado al artefacto.
@@ -239,11 +252,11 @@ su valor, su contribución en log-odds y la dirección del riesgo.
 ```json
 {"sk_id_curr": 288491, "probabilidad": 0.2413, "umbral": 0.16, "decision": "reject",
  "razones": [
-   {"feature": "EXT_SOURCE_3", "valor": 0.357, "shap": 0.302, "direccion": "aumenta_riesgo"},
-   {"feature": "prev_refusal_rate", "valor": 0.889, "shap": 0.301, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_1", "valor": 0.277, "shap": 0.256, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_2", "valor": 0.647, "shap": -0.206, "direccion": "reduce_riesgo"},
-   {"feature": "bureau_debt_ratio", "valor": 0.993, "shap": 0.188, "direccion": "aumenta_riesgo"}
+   {"feature": "EXT_SOURCE_3",      "valor": 0.357, "contribucion": 0.3024, "direccion": "aumenta_riesgo"},
+   {"feature": "prev_refusal_rate", "valor": 0.889, "contribucion": 0.3012, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_1",      "valor": 0.277, "contribucion": 0.2559, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_2",      "valor": 0.647, "contribucion": -0.2062, "direccion": "reduce_riesgo"},
+   {"feature": "bureau_debt_ratio", "valor": 0.993, "contribucion": 0.1883, "direccion": "aumenta_riesgo"}
  ]}
 ```
 
@@ -294,7 +307,7 @@ seis figuras en [`reports/figures/`](reports/figures/).
 - **LightGBM como modelo principal, regresión logística como baseline:** los datos son tabulares, con nulos y categóricas de alta cardinalidad; el baseline existe para demostrar cuánto aporta la complejidad, no para competir.
 - **Agregaciones en SQL sobre DuckDB en vez de `groupby` en pandas:** las tablas relacionadas tienen decenas de millones de filas; el SQL es reproducible, legible y no exige cargar todo en RAM.
 - **El test no se toca hasta el final:** cada decisión de features, hiperparámetros y umbral se toma en validación. Un test consultado dos veces deja de ser test.
-- **Umbral distinto de 0.5:** aprobar a un mal pagador cuesta 5 y rechazar a un buen cliente cuesta 1; el punto que minimiza el costo esperado no es el punto que maximiza el F1.
+- **Umbral por costo:** aprobar a un mal pagador cuesta 5 y rechazar a un buen cliente cuesta 1; el punto que minimiza el costo esperado no es el que maximiza el F1.
 - **Se descartó `scale_pos_weight`:** con pesos, el ROC-AUC baja (0.7774 vs 0.7796) y el early
   stopping se dispara en la primera iteración porque la logloss de validación deja de ser
   comparable. El desbalance se resuelve eligiendo el umbral por costo, no recoloreando el
@@ -313,7 +326,8 @@ seis figuras en [`reports/figures/`](reports/figures/).
 ## Limitaciones y trabajo futuro
 
 - **La matriz de costos es supuesta.** 5:1 es un supuesto de negocio razonable, no un dato del banco. El pipeline la deja como parámetro: con 20:1 el umbral baja a 0.045 y se aprueba al 48.6 %, así que **la política de riesgo se cambia sin reentrenar**, solo moviendo dos números.
-- **El drift es simulado.** Se alteran features del test a propósito; detectar ese drift prueba que el monitoreo funciona, no que el modelo aguante producción real.
+- **El drift es simulado.** Se alteran features de `train` a propósito; detectar ese drift prueba que el monitoreo funciona, no que el modelo aguante producción real.
+- **El contrato HTTP es parcial.** La API pide 23 campos de negocio y el modelo usa 185: lo que no llega se trata como nulo, así que una petición incompleta no es equivalente al expediente completo. El campo `cobertura` lo expone en cada respuesta.
 - **Riesgo de sesgo.** Edad y género correlacionan con el target y con decisiones históricas; el modelo puede heredar discriminación aunque no las use directamente.
 - **Una sola foto temporal.** No hay validación out-of-time porque el dataset no trae fechas de originación reales.
 - **Trabajo futuro:** reentrenamiento programado, feature store, y reglas de negocio encima del score.
@@ -331,9 +345,10 @@ pip install -e . --no-deps       # habilita el comando `ayni`
 pre-commit install
 
 # 2. Datos (requiere cuenta de Kaggle y aceptar las reglas de la competencia)
-ayni download                    # descarga y descomprime en data/raw (~1.3 GB)
+ayni download                    # descarga y descomprime en data/raw (~690 MB)
 ayni data                        # verifica que estén las 8 tablas
 ayni parquet                     # CSV → Parquet en data/interim
+ayni validate                    # esquemas Pandera sobre lo que haya en disco
 
 # 3. Pipeline
 make features                       # SQL en DuckDB → features.parquet + split
@@ -382,23 +397,31 @@ Ayni/
 │   ├── threshold.py              # decisión por costo
 │   ├── evaluate.py               # umbral OOF y evaluación en test
 │   ├── explain.py                # SHAP global, local y reason codes
+│   ├── drift.py                  # simulación de producción + Evidently
 │   ├── export.py                 # artefacto para servir
 │   ├── api.py                    # FastAPI: /health, /predict, /explain
 │   └── cli.py                    # python -m ayni <comando>
 ├── tests/
-│   ├── fixtures/
+│   ├── fixtures/                 # CSV válido y corrupto de 6 filas
 │   ├── test_api.py
+│   ├── test_drift.py
 │   ├── test_explain.py
 │   ├── test_features.py
+│   ├── test_quality.py
 │   ├── test_schema.py
+│   ├── test_smoke.py
 │   ├── test_threshold.py
 │   └── test_train.py
 ├── reports/
-│   ├── figures/                  # 10 figuras del proyecto
+│   ├── figures/                  # 11 figuras
 │   ├── umbral.json
-│   └── evaluacion_test.json
+│   ├── evaluacion_test.json
+│   ├── drift_resumen.json
+│   └── razones_ejemplo.json
+├── .github/workflows/ci.yml
 ├── Dockerfile
 ├── docker-compose.yml
+├── LICENSE
 ├── requirements-api.txt          # dependencias solo del servicio
 ├── requirements.txt              # entrenamiento y análisis
 └── README.md

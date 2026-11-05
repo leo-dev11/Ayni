@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import warnings
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib
@@ -56,9 +56,16 @@ class Razon:
     direccion: str  # "aumenta_riesgo" | "reduce_riesgo"
 
     def a_dict(self) -> dict:
-        datos = asdict(self)
-        datos["shap"] = round(float(self.shap), 4)
-        return datos
+        # mismos nombres que expone la API: `contribucion` en log-odds y `direccion`
+        valor = self.valor
+        if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+            valor = round(float(valor), 4)
+        return {
+            "feature": self.feature,
+            "valor": valor,
+            "contribucion": round(float(self.shap), 4),
+            "direccion": self.direccion,
+        }
 
 
 def cargar_modelo(version: str = "latest") -> lgb.LGBMClassifier:
@@ -209,11 +216,15 @@ def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
         "aprobado": {
             "sk_id_curr": int(train.iloc[aprobado][ID_COL]),
             "probabilidad": round(float(proba[aprobado]), 4),
+            "umbral": umbral,
+            "decision": "approve" if proba[aprobado] <= umbral else "reject",
             "razones": razones_aprobado,
         },
         "rechazado": {
             "sk_id_curr": int(train.iloc[rechazado][ID_COL]),
             "probabilidad": round(float(proba[rechazado]), 4),
+            "umbral": umbral,
+            "decision": "approve" if proba[rechazado] <= umbral else "reject",
             "razones": razones_rechazado,
         },
         "figuras": [

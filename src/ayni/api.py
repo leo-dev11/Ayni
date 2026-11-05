@@ -34,6 +34,10 @@ warnings.filterwarnings("ignore", message=".*shap values output has changed.*")
 
 MODELS_DIR = ROOT / "models"
 TOP_RAZONES = 5
+# El contrato HTTP cubre como máximo el 15.7 % de los 185 campos del modelo
+# (montos, ratios derivados, scores y agregados que el banco ya tiene). Avisar por debajo
+# del 50 % haría que la advertencia saltara siempre; 10 % es "solo mandaste lo obligatorio".
+COBERTURA_MINIMA = 0.10
 
 
 # ── contrato de entrada ────────────────────────────────────────────────────────
@@ -312,7 +316,7 @@ def crear_app(servicio: Servicio | None = None, directorio: Path = MODELS_DIR) -
         cobertura = _cobertura(X)
         advertencia = (
             None
-            if cobertura >= 0.5
+            if cobertura >= COBERTURA_MINIMA
             else (
                 f"Solo se informó el {cobertura:.0%} de los campos del modelo: la probabilidad "
                 "puede diferir de la que se obtendría con el expediente completo."
