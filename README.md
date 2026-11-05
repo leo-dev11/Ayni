@@ -3,16 +3,12 @@
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 <!-- CI verde (run 42033698168). El badge solo renderiza con el repo público;
-     al publicarlo en la fase 10, descomentar la línea siguiente. -->
+     al publicarlo, descomentar la línea siguiente. -->
 <!-- ![CI](https://github.com/leo-dev11/Ayni/actions/workflows/ci.yml/badge.svg) -->
 
 **Scoring de riesgo crediticio de punta a punta: modelo explicable, decisión por costo y monitoreo de drift.**
 
 > *Ayni* es el principio andino de reciprocidad: dar y devolver. El crédito funciona igual, sobre la confianza de que lo recibido será devuelto.
-
-> 🚧 **En desarrollo.** El proyecto está en fase de setup: todavía no hay resultados. Esta
-> portada se completa con cifras medidas a medida que avancen las fases; **nada de lo que
-> sigue es un resultado obtenido todavía**.
 
 ---
 
@@ -26,7 +22,7 @@
   solicitantes; el corte calculado aprueba al **87.2 %**.
 - **El costo total baja un 16.9 %** (23 835 → 19 799) y la mora entre aprobados cae del
   **7.8 % al 5.2 %**.
-- **Excluir `CODE_GENDER` cuesta +0.0002 AUC.** Dos diezmilésimas. La decisión de la fase 1 queda
+- **Excluir `CODE_GENDER` cuesta +0.0002 AUC.** Dos diezmilésimas. La decisión queda
   con su precio publicado, y no hay argumento de rendimiento para revertirla.
 - **`scale_pos_weight` empeora el modelo** (0.7774 vs 0.7796): el desbalance se trata en el umbral
   de decisión, no en el entrenamiento.
@@ -195,13 +191,13 @@ lo que confirma que las probabilidades están bien calibradas:
 `ORGANIZATION_TYPE` domina por delante de las tres `EXT_SOURCE_*`: es una categórica de 58 niveles
 y la importancia por ganancia de split favorece ese tipo de variable, así que el orden exacto hay
 que leerlo con pinzas. La lectura sólida es que **las `EXT_SOURCE_*` son el bloque continuo más
-fuerte**, y que los ratios construidos en la fase 2 (`prev_credit_application_ratio`,
+fuerte**, y que los ratios construidos en el feature engineering (`prev_credit_application_ratio`,
 `bureau_debt_ratio`, `annuity_income_ratio`) entran directo al top 20.
 
 ### Explicabilidad
 
 SHAP sobre una muestra de 5 000 solicitudes de train. **El ranking no coincide con la importancia por
-ganancia de split de la fase 4, y esa discrepancia es el punto:** `ORGANIZATION_TYPE` era la feature
+ganancia de split, y esa discrepancia es el punto:** `ORGANIZATION_TYPE` era la feature
 #1 por ganancia (categórica de 58 niveles, que infla esa métrica) y cae al **#6** cuando se mide el
 impacto real sobre la predicción.
 
@@ -217,7 +213,7 @@ impacto real sobre la predicción.
 ![SHAP summary](reports/figures/09_shap_summary.png)
 
 **Lectura:** las tres `EXT_SOURCE_*` son el bloque dominante, y su efecto es monótono: score alto
-(rojo) empuja el riesgo hacia abajo. Los ratios construidos en la fase 2 aparecen en el top 10, así
+(rojo) empuja el riesgo hacia abajo. Los ratios construidos en el feature engineering aparecen en el top 10, así
 que el feature engineering no fue decorativo.
 
 ![SHAP local](reports/figures/10_shap_local.png)
@@ -269,7 +265,7 @@ versionado); el resumen con distancias por feature está en
 
 ### Figuras
 
-**EDA (fase 1)** — análisis completo en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb),
+**Análisis exploratorio** — completo en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb),
 seis figuras en [`reports/figures/`](reports/figures/).
 
 | | |
@@ -277,13 +273,12 @@ seis figuras en [`reports/figures/`](reports/figures/).
 | ![EXT_SOURCE](reports/figures/04_ext_source.png) | Las tres `EXT_SOURCE_*` separan con claridad a quien paga de quien no: son el núcleo del modelo y, a la vez, lo más difícil de explicar a un cliente. |
 | ![Sesgo](reports/figures/06_sesgo.png) | El impago es 1.45× mayor en hombres y 3.4× mayor en menores de 25 que en mayores de 65. De aquí sale la decisión de excluir `CODE_GENDER` del modelo. |
 
-_Pendientes de las fases 5 y 6: costo vs. umbral y SHAP summary._
 
 ---
 
 ## Decisiones y aprendizajes
 
-> Esta sección se amplía fase por fase; la versión detallada, con alternativas descartadas y números, está en la bitácora.
+> Cada decisión incluye la alternativa que se descartó y el número que la justifica.
 
 - **El umbral es un techo de riesgo, no un piso.** Se aprueba si `P(impago) ≤ umbral`. La primera
   implementación lo tenía al revés (`p >= umbral`) y el resultado fue llamativo: el óptimo caía en
@@ -299,17 +294,16 @@ _Pendientes de las fases 5 y 6: costo vs. umbral y SHAP summary._
 - **Umbral distinto de 0.5:** aprobar a un mal pagador cuesta 5 y rechazar a un buen cliente cuesta 1; el punto que minimiza el costo esperado no es el punto que maximiza el F1.
 - **Se descartó `scale_pos_weight`:** con pesos, el ROC-AUC baja (0.7774 vs 0.7796) y el early
   stopping se dispara en la primera iteración porque la logloss de validación deja de ser
-  comparable. El desbalance se resuelve eligiendo el umbral por costo (fase 5), no recoloreando el
+  comparable. El desbalance se resuelve eligiendo el umbral por costo, no recoloreando el
   entrenamiento. → *Corregido en el camino:* el early stopping ahora mide **AUC**, no logloss.
 - **`CODE_GENDER` fuera, con precio:** cuesta **+0.0002 AUC** (0.7802 con género vs 0.7800 sin él).
   La variante con género se entrenó solo para tener el número; el campeón se elige únicamente entre
   corridas sin género, y esa regla está en código (`elegir_campeon`), no en un comentario.
 - **El campeón sale de la validación cruzada, nunca del test:** `elegir_campeon` ordena por
-  `roc_auc_cv` y el test se mantiene cerrado hasta la fase 5.
+  `roc_auc_cv` y el test se mantiene cerrado hasta la evaluación final.
 - **`learning_rate` 0.03 y `num_leaves` 63** frente a 0.05/31: +0.0004 AUC con el doble de tiempo
   (76 s vs 52 s). Ajuste de hiperparámetros mínimo, sin búsqueda exhaustiva: con una desviación
   entre folds de ±0.0026, optimizar más fino es ajustar ruido.
-- **Pendiente de documentar:** qué no funcionó (features descartadas, configuraciones que empeoraron el modelo).
 
 ---
 
@@ -324,8 +318,6 @@ _Pendientes de las fases 5 y 6: costo vs. umbral y SHAP summary._
 ---
 
 ## Cómo reproducirlo
-
-> Aún no ejecutable: el pipeline se construye en las fases 0–4. Estos serán los comandos.
 
 ```bash
 # 1. Entorno (Python 3.13)
