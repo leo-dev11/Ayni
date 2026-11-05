@@ -1,0 +1,93 @@
+{
+  "version_modelo": "latest",
+  "umbral": 0.16,
+  "n_muestra_shap": 5000,
+  "top_global": {
+    "EXT_SOURCE_2": 0.3048,
+    "EXT_SOURCE_3": 0.2749,
+    "EXT_SOURCE_1": 0.1569,
+    "prev_cnt_payment_max": 0.1171,
+    "goods_credit_ratio": 0.1054,
+    "ORGANIZATION_TYPE": 0.0925,
+    "prev_credit_application_ratio": 0.0905,
+    "employed_years": 0.089,
+    "AMT_ANNUITY": 0.0868,
+    "bureau_debt_ratio": 0.0755
+  },
+  "aprobado": {
+    "sk_id_curr": 150538,
+    "probabilidad": 0.0396,
+    "razones": [
+      {
+        "feature": "EXT_SOURCE_1",
+        "valor": NaN,
+        "shap": 0.1276,
+        "direccion": "aumenta_riesgo"
+      },
+      {
+        "feature": "goods_credit_ratio",
+        "valor": 0.9380863039399625,
+        "shap": -0.1147,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "prev_credit_application_ratio",
+        "valor": 0.8638165458074291,
+        "shap": -0.1138,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "prev_cnt_payment_max",
+        "valor": 12.0,
+        "shap": -0.1127,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "employed_years",
+        "valor": 3.509924709103354,
+        "shap": 0.1014,
+        "direccion": "aumenta_riesgo"
+      }
+    ]
+  },
+  "rechazado": {
+    "sk_id_curr": 288491,
+    "probabilidad": 0.2413,
+    "razones": [
+      {
+        "feature": "EXT_SOURCE_3",
+        "valor": 0.3572932680336494,
+        "shap": 0.3024,
+        "direccion": "aumenta_riesgo"
+      },
+      {
+        "feature": "prev_refusal_rate",
+        "valor": 0.8888888888888888,
+        "shap": 0.3012,
+        "direccion": "aumenta_riesgo"
+      },
+      {
+        "feature": "EXT_SOURCE_1",
+        "valor": 0.27686679934190833,
+        "shap": 0.2559,
+        "direccion": "aumenta_riesgo"
+      },
+      {
+        "feature": "EXT_SOURCE_2",
+        "valor": 0.6468534445747545,
+        "shap": -0.2062,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "bureau_debt_ratio",
+        "valor": 0.9933414634146341,
+        "shap": 0.1883,
+        "direccion": "aumenta_riesgo"
+      }
+    ]
+  },
+  "figuras": [
+    "reports\\figures\\09_shap_summary.png",
+    "reports\\figures\\10_shap_local.png"
+  ]
+}

@@ -193,6 +193,59 @@ que leerlo con pinzas. La lectura sólida es que **las `EXT_SOURCE_*` son el blo
 fuerte**, y que los ratios construidos en la fase 2 (`prev_credit_application_ratio`,
 `bureau_debt_ratio`, `annuity_income_ratio`) entran directo al top 20.
 
+### Explicabilidad
+
+SHAP sobre una muestra de 5 000 solicitudes de train. **El ranking no coincide con la importancia por
+ganancia de split de la fase 4, y esa discrepancia es el punto:** `ORGANIZATION_TYPE` era la feature
+#1 por ganancia (categórica de 58 niveles, que infla esa métrica) y cae al **#6** cuando se mide el
+impacto real sobre la predicción.
+
+| # | Feature | \|SHAP\| medio |
+|---|---|---:|
+| 1 | `EXT_SOURCE_2` | 0.3048 |
+| 2 | `EXT_SOURCE_3` | 0.2749 |
+| 3 | `EXT_SOURCE_1` | 0.1569 |
+| 4 | `prev_cnt_payment_max` | 0.1171 |
+| 5 | `goods_credit_ratio` | 0.1054 |
+| 6 | `ORGANIZATION_TYPE` | 0.0925 |
+
+![SHAP summary](reports/figures/09_shap_summary.png)
+
+**Lectura:** las tres `EXT_SOURCE_*` son el bloque dominante, y su efecto es monótono: score alto
+(rojo) empuja el riesgo hacia abajo. Los ratios construidos en la fase 2 aparecen en el top 10, así
+que el feature engineering no fue decorativo.
+
+![SHAP local](reports/figures/10_shap_local.png)
+
+**Dos casos reales, elegidos por su probabilidad mediana dentro de cada grupo** (no los extremos):
+
+- **Aprobado (P = 0.040):** la decisión se apoya en `goods_credit_ratio` y
+  `prev_credit_application_ratio` bajos y en un `prev_cnt_payment_max` de 12 cuotas. Su mayor empuje
+  al riesgo es que `EXT_SOURCE_1` viene **nula**: el modelo aprende que la ausencia de score externo
+  es señal, no ausencia de señal.
+- **Rechazado (P = 0.241):** `prev_refusal_rate = 0.89` (le rechazaron 8 de cada 9 solicitudes
+  previas) aporta +0.301, `EXT_SOURCE_3 = 0.36` aporta +0.302 y `bureau_debt_ratio = 0.99` suma
+  +0.188. Tres razones que un analista de crédito puede defender palabra por palabra.
+
+### Reason codes
+
+`ayni explain` genera el formato que consumirá `/explain`: las cinco features de mayor \|SHAP\|, con
+su valor, su contribución en log-odds y la dirección del riesgo.
+
+```json
+{"sk_id_curr": 288491, "probabilidad": 0.2413, "umbral": 0.16, "decision": "reject",
+ "razones": [
+   {"feature": "EXT_SOURCE_3", "valor": 0.357, "shap": 0.302, "direccion": "aumenta_riesgo"},
+   {"feature": "prev_refusal_rate", "valor": 0.889, "shap": 0.301, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_1", "valor": 0.277, "shap": 0.256, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_2", "valor": 0.647, "shap": -0.206, "direccion": "reduce_riesgo"},
+   {"feature": "bureau_debt_ratio", "valor": 0.993, "shap": 0.188, "direccion": "aumenta_riesgo"}
+ ]}
+```
+
+Los valores están en **log-odds**, la escala en la que el modelo razona; convertirlos a puntos de
+score o a probabilidad es una decisión de presentación, no de cálculo.
+
 ### Figuras
 
 **EDA (fase 1)** — análisis completo en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb),

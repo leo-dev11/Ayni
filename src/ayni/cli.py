@@ -179,6 +179,13 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_explain(args: argparse.Namespace) -> int:
+    from ayni.explain import ejecutar  # noqa: PLC0415
+
+    ejecutar(version=args.version, muestra=args.muestra)
+    return 0
+
+
 def cmd_evaluate(args: argparse.Namespace) -> int:
     from ayni.evaluate import elegir_umbral, evaluar_test  # noqa: PLC0415
 
@@ -255,6 +262,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-register", action="store_true", help="no registra el mejor modelo en el Registry"
     )
     p_train.set_defaults(func=cmd_train)
+
+    p_explain = sub.add_parser("explain", help="SHAP global, local y reason codes")
+    p_explain.add_argument("--version", default="latest", help="versión del modelo")
+    p_explain.add_argument("--muestra", type=int, default=5000, help="filas para el SHAP global")
+    p_explain.set_defaults(func=cmd_explain)
 
     p_eval = sub.add_parser("evaluate", help="umbral por costo (y evaluación final en test)")
     p_eval.add_argument("--corrida", default="lgbm-ajustado", help="OOF a usar")
