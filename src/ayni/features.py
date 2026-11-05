@@ -28,6 +28,7 @@ from ayni.config import (
     TABLES,
     TARGET,
 )
+from ayni.schema import validate_features, validate_raw
 
 BASE_TABLE = "application_train"
 FEATURES_PATH = PROCESSED_DIR / "features.parquet"
@@ -110,7 +111,7 @@ def build_features(*, force: bool = False) -> Path:
     start = time.perf_counter()
     con = connect()
 
-    base = con.execute(f"SELECT * FROM {BASE_TABLE}").df()
+    base = validate_raw(con.execute(f"SELECT * FROM {BASE_TABLE}").df())
     print(f"  base: {base.shape[0]:,} solicitudes × {base.shape[1]} columnas")
 
     agregados = []
@@ -130,6 +131,7 @@ def build_features(*, force: bool = False) -> Path:
     features, constantes = drop_constant(features)
     if constantes:
         print(f"  columnas constantes descartadas: {len(constantes)}")
+    features = validate_features(features)
 
     features.to_parquet(FEATURES_PATH, index=False, compression="zstd")
 

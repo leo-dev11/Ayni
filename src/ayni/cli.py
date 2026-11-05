@@ -11,9 +11,17 @@ import subprocess
 import sys
 import zipfile
 
+import pandas as pd
+
 from ayni.config import RAW_DIR, TABLES
-from ayni.features import FEATURES_PATH, build_features
+from ayni.features import FEATURES_PATH, build_features, connect
 from ayni.ingest import describe, missing_raw, to_parquet
+from ayni.schema import (
+    DataValidationError,
+    validate_features,
+    validate_raw,
+    validate_split,
+)
 from ayni.split import TEST_PATH, TRAIN_PATH, make_split
 
 COMPETITION = "home-credit-default-risk"
@@ -126,6 +134,45 @@ def cmd_check(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_validate(_: argparse.Namespace) -> int:
+    """Pasa los esquemas de Pandera sobre los datos que haya en disco."""
+    etapas: list[tuple[str, object, object]] = []
+
+    con = connect()
+    if con.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'application_train'"
+    ).fetchone()[0]:
+        raw = con.execute("SELECT * FROM application_train").df()
+        etapas.append(("application_train (cruda)", validate_raw, raw))
+
+    if FEATURES_PATH.exists():
+        features = pd.read_parquet(FEATURES_PATH)
+        etapas.append(("features.parquet", validate_features, features))
+
+    for nombre, archivo, validador in (
+        ("train.parquet", TRAIN_PATH, validate_split),
+        ("test.parquet", TEST_PATH, validate_split),
+    ):
+        if archivo.exists():
+            etapas.append((nombre, validador, pd.read_parquet(archivo)))
+
+    if not etapas:
+        print("No hay datos que validar. Ejecuta antes: python -m ayni features")
+        return 1
+
+    fallos = 0
+    for nombre, validador, datos in etapas:
+        try:
+            validador(datos)
+            print(f"  OK    {nombre:<24} {datos.shape[0]:>7,} filas × {datos.shape[1]} columnas")
+        except DataValidationError as error:
+            fallos += 1
+            print(f"  FALLO {nombre}\n{error}\n")
+
+    print(f"\n{len(etapas) - fallos} de {len(etapas)} etapas cumplen el esquema.")
+    return 1 if fallos else 0
+
+
 def cmd_features(args: argparse.Namespace) -> int:
     if FEATURES_PATH.exists() and not args.force:
         print(f"Ya existe {FEATURES_PATH.name}; usa --force para regenerarlo.")
@@ -173,6 +220,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("check", help="lista filas y columnas de cada Parquet").set_defaults(
         func=cmd_check
+    )
+
+    sub.add_parser("validate", help="valida los datos contra los esquemas de Pandera").set_defaults(
+        func=cmd_validate
     )
 
     p_features = sub.add_parser("features", help="ejecuta los .sql y genera features.parquet")

@@ -126,7 +126,7 @@ flowchart LR
 ```
 
 1. **Features en SQL, no en pandas.** Cada tabla se agrega a una fila por `SK_ID_CURR` con un `.sql` propio; DuckDB lee los Parquet sin cargarlos enteros en memoria. Resultado: **188 columnas, 60 de ellas agregadas** de 4 tablas relacionales, en 17 s.
-2. **Validación antes de modelar.** Los esquemas Pandera cortan el pipeline si aparecen tipos, rangos o nulos imposibles.
+2. **Validación antes de modelar.** Tres esquemas Pandera (tabla cruda, features, particiones) cortan el pipeline si aparecen tipos, rangos o nulos imposibles; `ayni validate` comprueba lo ya escrito y devuelve código de salida 1. Un CSV corrupto de prueba en `tests/fixtures/` demuestra que el corte funciona.
 3. **Split estratificado 80/20 con semilla fija.** El 20 % de test no se toca hasta la evaluación final; todo lo demás se decide en validación cruzada.
 4. **Dos métricas, no una.** ROC-AUC para comparar con el estándar de la competencia y PR-AUC porque con 8 % de positivos es la lectura honesta.
 5. **Desbalance por pesos, no por resampling.** Se compara `scale_pos_weight` contra no ajustar, y decide la métrica, no la intuición.

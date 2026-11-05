@@ -11,7 +11,7 @@ RUN     := $(BIN)/python -m ayni
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install data download parquet check test lint fmt features train evaluate drift clean
+.PHONY: help install data download parquet check validate test lint fmt features train evaluate drift clean
 
 help:
 	@echo "Ayni — targets disponibles"
@@ -20,6 +20,7 @@ help:
 	@echo "  download   descarga y descomprime el dataset de Kaggle"
 	@echo "  parquet    convierte los CSV a Parquet en data/interim"
 	@echo "  check      lista filas y columnas de cada Parquet"
+	@echo "  validate   valida los datos contra los esquemas de Pandera"
 	@echo "  test       pytest"
 	@echo "  lint       ruff check"
 	@echo "  fmt        ruff format"
@@ -43,6 +44,9 @@ parquet:
 
 check:
 	$(RUN) check
+
+validate:
+	$(RUN) validate
 
 features:
 	$(RUN) features

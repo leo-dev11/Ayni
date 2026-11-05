@@ -15,6 +15,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from ayni.config import ID_COL, PROCESSED_DIR, RANDOM_STATE, TARGET
+from ayni.schema import validate_split
 
 TEST_SIZE = 0.2
 TRAIN_PATH = PROCESSED_DIR / "train.parquet"
@@ -35,6 +36,9 @@ def make_split(
     df = pd.read_parquet(origen)
 
     train, test = train_test_split(df, test_size=test_size, stratify=df[TARGET], random_state=seed)
+
+    train = validate_split(train)
+    test = validate_split(test)
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     train.to_parquet(TRAIN_PATH, index=False, compression="zstd")
