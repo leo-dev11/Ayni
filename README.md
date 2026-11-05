@@ -2,9 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-<!-- CI verde (run 42033698168). El badge solo renderiza con el repo público;
-     al publicarlo, descomentar la línea siguiente. -->
-<!-- ![CI](https://github.com/leo-dev11/Ayni/actions/workflows/ci.yml/badge.svg) -->
+![CI](https://github.com/leo-dev11/Ayni/actions/workflows/ci.yml/badge.svg)
 
 **Scoring de riesgo crediticio de punta a punta: modelo explicable, decisión por costo y monitoreo de drift.**
 
