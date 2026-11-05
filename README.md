@@ -16,24 +16,24 @@
 
 ## Resultados clave
 
-> _Sin resultados aún._ Esta sección se llena al cerrar las fases 4–6, con números medidos.
+**Validación cruzada de 5 folds sobre el 80 % de train. El test sigue sin tocarse.**
 
-Lo que existe hoy es el objetivo, no el logro:
+- **ROC-AUC 0.780** con LightGBM frente a **0.766** del baseline logístico: la complejidad del
+  modelo aporta **+0.014 AUC**.
+- **PR-AUC 0.270** (baseline 0.244), que es la métrica honesta con 8 % de positivos.
+- **Excluir `CODE_GENDER` cuesta +0.0002 AUC.** Dos diezmilésimas. La decisión de la fase 1 queda
+  con su precio publicado, y no hay argumento de rendimiento para revertirla.
+- **`scale_pos_weight` empeora el modelo** (0.7774 vs 0.7796): el desbalance se trata en el umbral
+  de decisión, no en el entrenamiento.
 
-| Qué | Estado |
+| Métrica | Valor |
 |---|---|
-| Modelo principal | LightGBM sobre features agregadas por cliente — fase 4 |
-| Decisión | umbral por costo esperado en vez de 0.5 — fase 5 |
-| Explicación | 5 *reason codes* por decisión vía SHAP — fase 6 |
-| Servicio | `/predict` y `/explain` en Docker — fase 7 |
-| CI | ruff + tests + ROC-AUC mínimo — fase 8 |
-
-| Métrica (test, sin tocar hasta la evaluación final) | Valor |
-|---|---|
-| ROC-AUC · LightGBM | pendiente |
-| ROC-AUC · baseline logístico | pendiente |
-| PR-AUC · LightGBM | pendiente |
-| Costo total vs. umbral 0.5 | pendiente |
+| ROC-AUC · LightGBM (CV) | **0.7800** ± 0.0026 |
+| ROC-AUC · baseline logístico (CV) | 0.7658 ± 0.0019 |
+| PR-AUC · LightGBM (CV) | **0.2697** |
+| PR-AUC · baseline logístico (CV) | 0.2440 |
+| ROC-AUC en test | pendiente (fase 5) |
+| Costo total vs. umbral 0.5 | pendiente (fase 5) |
 
 ---
 
@@ -140,10 +140,20 @@ flowchart LR
 
 ### Modelos
 
-| Modelo | ROC-AUC (CV) | ROC-AUC (test) | PR-AUC (test) |
+Validación cruzada de 5 folds sobre `train.parquet` (246 008 filas). Cinco corridas comparables
+registradas en MLflow; el campeón es `lgbm-ajustado` (v1 del Registry).
+
+| Corrida | ROC-AUC (CV) | PR-AUC (CV) | Notas |
 |---|---|---|---|
-| Logistic Regression (baseline) | _pendiente_ | _pendiente_ | _pendiente_ |
-| LightGBM | _pendiente_ | _pendiente_ | _pendiente_ |
+| `lgbm-ajustado` | **0.7800** ± 0.0026 | **0.2697** | campeón registrado |
+| `lgbm-base` | 0.7796 ± 0.0029 | 0.2685 | hiperparámetros por defecto |
+| `lgbm-pos-weight` | 0.7774 ± 0.0024 | 0.2665 | `scale_pos_weight` = 11.4 |
+| `baseline-logreg` | 0.7658 ± 0.0019 | 0.2440 | imputación + escalado + one-hot |
+| `lgbm-con-genero` | 0.7802 ± 0.0025 | 0.2691 | **solo para medir**, excluida del registro |
+
+| ROC-AUC (test) | PR-AUC (test) |
+|---|---|
+| pendiente (fase 5) | pendiente (fase 5) |
 
 ### Decisión por costo
 
@@ -151,6 +161,14 @@ flowchart LR
 |---|---|---|---|
 | 0.50 (por defecto) | _pendiente_ | _pendiente_ | _pendiente_ |
 | Óptimo por costo: _—_ | _pendiente_ | _pendiente_ | _pendiente_ |
+
+![Importancia de features](reports/figures/07_importancia_lgbm.png)
+
+`ORGANIZATION_TYPE` domina por delante de las tres `EXT_SOURCE_*`: es una categórica de 58 niveles
+y la importancia por ganancia de split favorece ese tipo de variable, así que el orden exacto hay
+que leerlo con pinzas. La lectura sólida es que **las `EXT_SOURCE_*` son el bloque continuo más
+fuerte**, y que los ratios construidos en la fase 2 (`prev_credit_application_ratio`,
+`bureau_debt_ratio`, `annuity_income_ratio`) entran directo al top 20.
 
 ### Figuras
 
@@ -175,7 +193,18 @@ _Pendientes de las fases 5 y 6: costo vs. umbral y SHAP summary._
 - **Agregaciones en SQL sobre DuckDB en vez de `groupby` en pandas:** las tablas relacionadas tienen decenas de millones de filas; el SQL es reproducible, legible y no exige cargar todo en RAM.
 - **El test no se toca hasta el final:** cada decisión de features, hiperparámetros y umbral se toma en validación. Un test consultado dos veces deja de ser test.
 - **Umbral distinto de 0.5:** aprobar a un mal pagador cuesta 5 y rechazar a un buen cliente cuesta 1; el punto que minimiza el costo esperado no es el punto que maximiza el F1.
-- **Género y edad:** `CODE_GENDER` es altamente predictivo y también discriminatorio; la decisión y su justificación quedan documentadas en la bitácora antes de entrenar.
+- **Se descartó `scale_pos_weight`:** con pesos, el ROC-AUC baja (0.7774 vs 0.7796) y el early
+  stopping se dispara en la primera iteración porque la logloss de validación deja de ser
+  comparable. El desbalance se resuelve eligiendo el umbral por costo (fase 5), no recoloreando el
+  entrenamiento. → *Corregido en el camino:* el early stopping ahora mide **AUC**, no logloss.
+- **`CODE_GENDER` fuera, con precio:** cuesta **+0.0002 AUC** (0.7802 con género vs 0.7800 sin él).
+  La variante con género se entrenó solo para tener el número; el campeón se elige únicamente entre
+  corridas sin género, y esa regla está en código (`elegir_campeon`), no en un comentario.
+- **El campeón sale de la validación cruzada, nunca del test:** `elegir_campeon` ordena por
+  `roc_auc_cv` y el test se mantiene cerrado hasta la fase 5.
+- **`learning_rate` 0.03 y `num_leaves` 63** frente a 0.05/31: +0.0004 AUC con el doble de tiempo
+  (76 s vs 52 s). Ajuste de hiperparámetros mínimo, sin búsqueda exhaustiva: con una desviación
+  entre folds de ±0.0026, optimizar más fino es ajustar ruido.
 - **Pendiente de documentar:** qué no funcionó (features descartadas, configuraciones que empeoraron el modelo).
 
 ---

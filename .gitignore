@@ -42,6 +42,8 @@ mlflow-artifacts/
 # ── Artefactos generados por el pipeline ───────────────────────
 reports/drift/
 reports/*.html
+reports/importancia_*.csv
+reports/resumen_corridas.json
 *.log
 
 # ── Sistema / IDE ──────────────────────────────────────────────

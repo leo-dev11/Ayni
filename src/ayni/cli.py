@@ -55,7 +55,6 @@ si no, Kaggle responde 403 aunque el token sea correcto.
 """
 
 PENDING = {
-    "train": "fase 4 · modelado y experimentos",
     "evaluate": "fase 5 · umbral de decisión por costo",
     "drift": "fase 9 · monitoreo de drift",
 }
@@ -173,6 +172,14 @@ def cmd_validate(_: argparse.Namespace) -> int:
     return 1 if fallos else 0
 
 
+def cmd_train(args: argparse.Namespace) -> int:
+    # Import perezoso: mlflow y lightgbm tardan segundos y el resto de comandos no los usa.
+    from ayni.train import main as entrenar  # noqa: PLC0415
+
+    entrenar(folds=args.folds, registrar_modelo=not args.no_register, solo=args.solo)
+    return 0
+
+
 def cmd_features(args: argparse.Namespace) -> int:
     if FEATURES_PATH.exists() and not args.force:
         print(f"Ya existe {FEATURES_PATH.name}; usa --force para regenerarlo.")
@@ -225,6 +232,16 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("validate", help="valida los datos contra los esquemas de Pandera").set_defaults(
         func=cmd_validate
     )
+
+    p_train = sub.add_parser("train", help="entrena con CV y registra las corridas en MLflow")
+    p_train.add_argument("--folds", type=int, default=5, help="nº de folds (defecto: 5)")
+    p_train.add_argument(
+        "--solo", default=None, help="ejecuta solo una corrida (baseline-logreg, lgbm-base, ...)"
+    )
+    p_train.add_argument(
+        "--no-register", action="store_true", help="no registra el mejor modelo en el Registry"
+    )
+    p_train.set_defaults(func=cmd_train)
 
     p_features = sub.add_parser("features", help="ejecuta los .sql y genera features.parquet")
     p_features.add_argument("--force", action="store_true", help="regenera aunque ya exista")
