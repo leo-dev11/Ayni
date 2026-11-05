@@ -58,14 +58,33 @@ def test_el_campeon_nunca_usa_genero():
         elegir_campeon([con])
 
 
-def test_el_coste_del_genero_se_mide_contra_la_mejor_sin_genero():
+def test_el_coste_del_genero_se_mide_contra_la_gemela_y_no_contra_la_mejor():
+    """Si la corrida con género usa otros hiperparámetros, compararla con la mejor ajustada mezcla
+    dos efectos. Se compara contra la de parámetros idénticos."""
+    base = {"learning_rate": 0.05}
+    ajustada = {"learning_rate": 0.03}
     corridas = [
-        corrida_minima(nombre="a", metricas={"roc_auc_cv": 0.775}),
-        corrida_minima(nombre="b", metricas={"roc_auc_cv": 0.780}),
-        corrida_minima(nombre="c", con_genero=True, metricas={"roc_auc_cv": 0.7802}),
+        corrida_minima(nombre="ajustada", params=ajustada, metricas={"roc_auc_cv": 0.7800}),
+        corrida_minima(nombre="base", params=base, metricas={"roc_auc_cv": 0.7796}),
+        corrida_minima(
+            nombre="base-con-genero", params=base, con_genero=True, metricas={"roc_auc_cv": 0.7802}
+        ),
     ]
 
-    assert coste_de_excluir_genero(corridas) == pytest.approx(0.0002)
+    comparacion = coste_de_excluir_genero(corridas)
+
+    assert comparacion is not None
+    assert comparacion.corrida_sin == "base"
+    assert comparacion.delta == pytest.approx(0.0006)
+
+
+def test_sin_pareja_comparable_no_se_reporta_coste():
+    corridas = [
+        corrida_minima(nombre="ajustada", params={"learning_rate": 0.03}),
+        corrida_minima(nombre="con", con_genero=True, params={"learning_rate": 0.05}),
+    ]
+
+    assert coste_de_excluir_genero(corridas) is None
 
 
 def test_sin_corrida_con_genero_no_hay_coste_que_reportar():

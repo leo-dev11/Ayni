@@ -1,5 +1,5 @@
 {
-  "version_modelo": "latest",
+  "version_modelo": "1",
   "fingerprint_test": "86882d52ea880f41",
   "n_test": 61503,
   "roc_auc": 0.7829,

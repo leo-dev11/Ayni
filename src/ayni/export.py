@@ -18,6 +18,7 @@ from pathlib import Path
 
 import mlflow
 import mlflow.lightgbm
+from mlflow.tracking import MlflowClient
 
 from ayni.config import MLFLOW_URI, PROCESSED_DIR, REPORTS_DIR, ROOT
 
@@ -27,11 +28,29 @@ CATEGORIAS_PATH = PROCESSED_DIR / "categorias.json"
 UMBRAL_PATH = REPORTS_DIR / "umbral.json"
 
 
+def resolver_version(version: str = "latest", nombre: str = REGISTERED_MODEL) -> str:
+    """Traduce `latest` por el número real de versión del Registry.
+
+    Guardar "latest" en el manifest rompe la trazabilidad: dentro de un mes ese nombre apunta a
+    otro modelo y el artefacto deja de identificarse.
+    """
+    if version != "latest":
+        return version
+    mlflow.set_tracking_uri(MLFLOW_URI)
+    versiones = MlflowClient().search_model_versions(f"name='{nombre}'")
+    if not versiones:
+        raise SystemExit(
+            f"No hay versiones registradas de '{nombre}'. Ejecuta antes: python -m ayni train"
+        )
+    return str(max(versiones, key=lambda v: int(v.version)).version)
+
+
 def exportar(version: str = "latest", destino: Path = MODELS_DIR) -> Path:
     """Descarga el modelo registrado y lo deja listo para `ayni.api`."""
     destino.mkdir(parents=True, exist_ok=True)
 
     mlflow.set_tracking_uri(MLFLOW_URI)
+    version = resolver_version(version)
     uri = f"models:/{REGISTERED_MODEL}/{version}"
     modelo = mlflow.lightgbm.load_model(uri)
 
@@ -47,7 +66,7 @@ def exportar(version: str = "latest", destino: Path = MODELS_DIR) -> Path:
 
     manifest = {
         "modelo": REGISTERED_MODEL,
-        "version": version,
+        "version": str(version),
         "uri_origen": uri,
         "columnas": list(modelo.feature_name_),
         "categorias": categorias,

@@ -214,8 +214,15 @@ def _decision(servicio: Servicio, probabilidad: float) -> str:
     return "approve" if probabilidad <= servicio.umbral else "reject"
 
 
-def _razones(servicio: Servicio, X: pd.DataFrame, top: int = TOP_RAZONES) -> list[Razon]:
-    """Hasta `top` features **con dato**: una razón sobre un campo no enviado no se puede dar.
+def _razones(
+    servicio: Servicio, X: pd.DataFrame, decision: str, top: int = TOP_RAZONES
+) -> list[Razon]:
+    """Hasta `top` features **con dato** y **coherentes con la decisión**.
+
+    Al rechazar se devuelven solo las que suben el riesgo; al aprobar, solo las que lo bajan. Dar
+    a un rechazado un motivo que dice "esto juega a tu favor" es confuso y, en banca, legalmente
+    insostenible. Si el filtro deja la lista vacía, se devuelve la mejor disponible sin filtrar.
+
 
     Un `NaN` sí empuja el score, pero "no nos diste tu antigüedad de registro" no es una razón
     defendible ante un cliente. El campo ausente se reporta aparte, como advertencia.
@@ -229,6 +236,10 @@ def _razones(servicio: Servicio, X: pd.DataFrame, top: int = TOP_RAZONES) -> lis
     candidatas = np.where(presentes)[0]
     if candidatas.size == 0:  # sin ningún dato: se explica con el modelo entero
         candidatas = np.arange(len(valores))
+    signo = 1 if decision == "reject" else -1
+    con_signo = candidatas[signo * valores[candidatas] > 0]
+    if con_signo.size:
+        candidatas = con_signo
     orden = candidatas[np.argsort(-np.abs(valores[candidatas]))][:top]
 
     return [
@@ -327,7 +338,7 @@ def crear_app(servicio: Servicio | None = None, directorio: Path = MODELS_DIR) -
             decision=_decision(actual, probabilidad),
             umbral=actual.umbral,
             modelo_version=actual.version,
-            razones=_razones(actual, X),
+            razones=_razones(actual, X, _decision(actual, probabilidad)),
             cobertura=cobertura,
             advertencia=advertencia,
         )

@@ -253,14 +253,42 @@ def elegir_campeon(corridas: list[Corrida]) -> Corrida:
     return max(candidatas, key=lambda c: c.metricas["roc_auc_cv"])
 
 
-def coste_de_excluir_genero(corridas: list[Corrida]) -> float | None:
-    """Diferencia de ROC-AUC entre la mejor corrida sin género y la que sí lo usa."""
-    sin_genero = [c for c in corridas if c.familia == "lgbm" and not c.con_genero]
+@dataclass
+class ComparacionGenero:
+    """Par de corridas comparables (mismos hiperparámetros, distinto uso de género)."""
+
+    delta: float
+    sin_genero: float
+    con_genero: float
+    corrida_sin: str
+    corrida_con: str
+
+
+def coste_de_excluir_genero(corridas: list[Corrida]) -> ComparacionGenero | None:
+    """Coste medido **contra la corrida de iguales hiperparámetros**.
+
+    Comparar la versión con género de una configuración contra la mejor versión ajustada de otra
+    mezcla dos efectos (género + tuning). Si no hay pareja comparable, no se reporta nada.
+    """
     con_genero = [c for c in corridas if c.familia == "lgbm" and c.con_genero]
-    if not sin_genero or not con_genero:
+    if not con_genero:
         return None
-    referencia = max(c.metricas["roc_auc_cv"] for c in sin_genero)
-    return con_genero[0].metricas["roc_auc_cv"] - referencia
+    referencia = con_genero[0]
+    parejas = [
+        c
+        for c in corridas
+        if c.familia == "lgbm" and not c.con_genero and c.params == referencia.params
+    ]
+    if not parejas:
+        return None
+    gemela = max(parejas, key=lambda c: c.metricas["roc_auc_cv"])
+    return ComparacionGenero(
+        delta=referencia.metricas["roc_auc_cv"] - gemela.metricas["roc_auc_cv"],
+        sin_genero=gemela.metricas["roc_auc_cv"],
+        con_genero=referencia.metricas["roc_auc_cv"],
+        corrida_sin=gemela.nombre,
+        corrida_con=referencia.nombre,
+    )
 
 
 def configurar_mlflow() -> None:

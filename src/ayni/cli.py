@@ -177,6 +177,13 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fairness(args: argparse.Namespace) -> int:
+    from ayni.fairness import ejecutar  # noqa: PLC0415
+
+    ejecutar(corrida=args.corrida)
+    return 0
+
+
 def cmd_drift(args: argparse.Namespace) -> int:
     from ayni.drift import ejecutar  # noqa: PLC0415
 
@@ -274,6 +281,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-register", action="store_true", help="no registra el mejor modelo en el Registry"
     )
     p_train.set_defaults(func=cmd_train)
+
+    p_fair = sub.add_parser("fairness", help="aprobación y mora por género y tramo de edad")
+    p_fair.add_argument("--corrida", default="lgbm-ajustado", help="OOF a usar")
+    p_fair.set_defaults(func=cmd_fairness)
 
     p_drift = sub.add_parser("drift", help="simula producción y mide drift con Evidently")
     p_drift.add_argument("--muestra", type=int, default=3000, help="filas por conjunto")

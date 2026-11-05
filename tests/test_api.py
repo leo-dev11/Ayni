@@ -93,6 +93,14 @@ def test_explain_devuelve_cinco_razones_ordenadas(cliente_api):
         assert set(razon) == {"feature", "valor", "contribucion", "direccion"}
 
 
+def test_las_razones_son_coherentes_con_la_decision(cliente_api):
+    datos = cliente_api.post("/explain", json=PAYLOAD).json()
+    esperado = "aumenta_riesgo" if datos["decision"] == "reject" else "reduce_riesgo"
+
+    assert datos["razones"]
+    assert all(r["direccion"] == esperado for r in datos["razones"])
+
+
 def test_las_razones_solo_hablan_de_campos_enviados(cliente_api):
     datos = cliente_api.post("/explain", json=PAYLOAD).json()
     enviados = {"AMT_INCOME_TOTAL", "AMT_CREDIT", "AMT_ANNUITY", "age_years"}

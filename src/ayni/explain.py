@@ -45,6 +45,9 @@ RAZONES_PATH = REPORTS_DIR / "razones_ejemplo.json"
 REGISTERED_MODEL = "ayni-lgbm"
 MUESTRA_GLOBAL = 5000
 
+# Al rechazar se dan motivos que suben el riesgo; al aprobar, los que lo bajan.
+_DIRECCION = {"reject": "aumenta_riesgo", "approve": "reduce_riesgo"}
+
 
 @dataclass
 class Razon:
@@ -59,7 +62,7 @@ class Razon:
         # mismos nombres que expone la API: `contribucion` en log-odds y `direccion`
         valor = self.valor
         if isinstance(valor, (int, float)) and not isinstance(valor, bool):
-            valor = round(float(valor), 4)
+            valor = None if pd.isna(valor) else round(float(valor), 4)
         return {
             "feature": self.feature,
             "valor": valor,
@@ -96,6 +99,11 @@ def preparar_matriz(df: pd.DataFrame) -> pd.DataFrame:
     return aplicar_categorias(X, vocabulario)
 
 
+def linea_razon(razon: dict) -> str:
+    """Línea de consola para una razón. Aislada para poder testear el formato y las claves."""
+    return f"  {razon['feature']:<32} {razon['contribucion']:+.3f}  {razon['direccion']}"
+
+
 def construir_explicador(modelo: lgb.LGBMClassifier) -> shap.TreeExplainer:
     """`tree_path_dependent` no necesita fondo de datos y es exacto para árboles."""
     return shap.TreeExplainer(modelo)
@@ -108,10 +116,35 @@ def valores_shap(explicador: shap.TreeExplainer, X: pd.DataFrame) -> np.ndarray:
     return np.asarray(valores)
 
 
-def razones(explicador: shap.TreeExplainer, fila: pd.DataFrame, top: int = 5) -> list[Razon]:
-    """Las `top` features que más empujan la decisión, ordenadas por magnitud absoluta."""
+def razones(
+    explicador: shap.TreeExplainer,
+    fila: pd.DataFrame,
+    top: int = 5,
+    *,
+    solo_direccion: str | None = None,
+) -> list[Razon]:
+    """Las `top` features que más empujan la decisión, ordenadas por magnitud absoluta.
+
+    `solo_direccion` filtra por coherencia con la decisión: un rechazo no puede llevar motivos que
+    bajen el riesgo, ni una aprobación motivos que lo suban.
+    """
     valores = valores_shap(explicador, fila)[0]
-    orden = np.argsort(-np.abs(valores))[:top]
+    # solo campos informados: un nulo puede empujar el score, pero no es una razón defendible
+    presentes = ~fila.iloc[0].isna().to_numpy()
+    candidatas = np.where(presentes)[0]
+    if candidatas.size == 0:  # sin datos: se explica con el modelo entero
+        candidatas = np.arange(valores.size)
+
+    if solo_direccion == "aumenta_riesgo":
+        con_signo = candidatas[valores[candidatas] > 0]
+    elif solo_direccion == "reduce_riesgo":
+        con_signo = candidatas[valores[candidatas] < 0]
+    else:
+        con_signo = candidatas
+    if con_signo.size:  # si el filtro deja la lista vacía, se devuelve sin filtrar
+        candidatas = con_signo
+
+    orden = candidatas[np.argsort(-np.abs(valores[candidatas]))][:top]
     return [
         Razon(
             feature=str(fila.columns[i]),
@@ -205,8 +238,20 @@ def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
     aprobado, rechazado = _ejemplos(modelo, X, umbral)
     fig_local = _figura_local(explicador, X, {"Aprobado": aprobado, "Rechazado": rechazado}, proba)
 
-    razones_aprobado = [r.a_dict() for r in razones(explicador, X.iloc[[aprobado]])]
-    razones_rechazado = [r.a_dict() for r in razones(explicador, X.iloc[[rechazado]])]
+    decision_aprobado = "approve" if proba[aprobado] <= umbral else "reject"
+    decision_rechazado = "approve" if proba[rechazado] <= umbral else "reject"
+    razones_aprobado = [
+        r.a_dict()
+        for r in razones(
+            explicador, X.iloc[[aprobado]], solo_direccion=_DIRECCION[decision_aprobado]
+        )
+    ]
+    razones_rechazado = [
+        r.a_dict()
+        for r in razones(
+            explicador, X.iloc[[rechazado]], solo_direccion=_DIRECCION[decision_rechazado]
+        )
+    ]
 
     detalle = {
         "version_modelo": version,
@@ -217,14 +262,14 @@ def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
             "sk_id_curr": int(train.iloc[aprobado][ID_COL]),
             "probabilidad": round(float(proba[aprobado]), 4),
             "umbral": umbral,
-            "decision": "approve" if proba[aprobado] <= umbral else "reject",
+            "decision": decision_aprobado,
             "razones": razones_aprobado,
         },
         "rechazado": {
             "sk_id_curr": int(train.iloc[rechazado][ID_COL]),
             "probabilidad": round(float(proba[rechazado]), 4),
             "umbral": umbral,
-            "decision": "approve" if proba[rechazado] <= umbral else "reject",
+            "decision": decision_rechazado,
             "razones": razones_rechazado,
         },
         "figuras": [
@@ -241,9 +286,9 @@ def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
         print(f"  {nombre:<32} {valor:.4f}")
     print(f"\ncaso aprobado  (P={proba[aprobado]:.3f}, umbral {umbral}):")
     for razon in razones_aprobado:
-        print(f"  {razon['feature']:<32} {razon['shap']:+.3f}  {razon['direccion']}")
+        print(linea_razon(razon))
     print(f"\ncaso rechazado (P={proba[rechazado]:.3f}, umbral {umbral}):")
     for razon in razones_rechazado:
-        print(f"  {razon['feature']:<32} {razon['shap']:+.3f}  {razon['direccion']}")
+        print(linea_razon(razon))
     print(f"\n{RAZONES_PATH.relative_to(ROOT)}")
     return detalle

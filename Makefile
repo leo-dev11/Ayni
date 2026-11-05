@@ -11,7 +11,7 @@ RUN     := $(BIN)/python -m ayni
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install data download parquet check validate test lint fmt features train evaluate evaluate-test explain export docker drift clean
+.PHONY: help install data download parquet check validate test lint fmt features train evaluate evaluate-test explain export fairness docker drift clean
 
 help:
 	@echo "Ayni — targets disponibles"
@@ -66,6 +66,9 @@ explain:
 
 export:
 	$(RUN) export-model
+
+fairness:
+	$(RUN) fairness
 
 docker:
 	docker compose up --build

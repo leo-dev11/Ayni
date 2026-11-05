@@ -1,0 +1,85 @@
+{
+  "corrida": "lgbm-ajustado",
+  "umbral": 0.16,
+  "n": 246008,
+  "genero": [
+    {
+      "CODE_GENDER": "F",
+      "n": 161887,
+      "tasa_aprobacion": 0.8931,
+      "tasa_impago": 0.07,
+      "mora_entre_aprobados": 0.0479,
+      "ratio_vs_mejor": 1.0
+    },
+    {
+      "CODE_GENDER": "M",
+      "n": 84119,
+      "tasa_aprobacion": 0.835,
+      "tasa_impago": 0.1014,
+      "mora_entre_aprobados": 0.065,
+      "ratio_vs_mejor": 0.9349
+    },
+    {
+      "CODE_GENDER": "XNA",
+      "n": 2,
+      "tasa_aprobacion": 1.0,
+      "tasa_impago": 0.0,
+      "mora_entre_aprobados": 0.0,
+      "ratio_vs_mejor": 1.1197
+    }
+  ],
+  "edad": [
+    {
+      "tramo_edad": "<25",
+      "n": 9841,
+      "tasa_aprobacion": 0.7286,
+      "tasa_impago": 0.1244,
+      "mora_entre_aprobados": 0.075,
+      "ratio_vs_mejor": 0.7389
+    },
+    {
+      "tramo_edad": "25-34",
+      "n": 58061,
+      "tasa_aprobacion": 0.7975,
+      "tasa_impago": 0.1069,
+      "mora_entre_aprobados": 0.0648,
+      "ratio_vs_mejor": 0.8088
+    },
+    {
+      "tramo_edad": "35-44",
+      "n": 67372,
+      "tasa_aprobacion": 0.8715,
+      "tasa_impago": 0.0844,
+      "mora_entre_aprobados": 0.056,
+      "ratio_vs_mejor": 0.8839
+    },
+    {
+      "tramo_edad": "45-54",
+      "n": 56151,
+      "tasa_aprobacion": 0.9042,
+      "tasa_impago": 0.0697,
+      "mora_entre_aprobados": 0.0495,
+      "ratio_vs_mejor": 0.917
+    },
+    {
+      "tramo_edad": "55-64",
+      "n": 48357,
+      "tasa_aprobacion": 0.9457,
+      "tasa_impago": 0.0537,
+      "mora_entre_aprobados": 0.0426,
+      "ratio_vs_mejor": 0.9591
+    },
+    {
+      "tramo_edad": "65+",
+      "n": 6226,
+      "tasa_aprobacion": 0.986,
+      "tasa_impago": 0.0368,
+      "mora_entre_aprobados": 0.0339,
+      "ratio_vs_mejor": 1.0
+    }
+  ],
+  "regla_80_por_genero": 0.9349,
+  "regla_80_por_edad": 0.7389,
+  "figura": "reports\\figures\\12_sesgo_decision.png",
+  "nota": "CODE_GENDER no entra en el modelo; se mide porque el sesgo puede llegar por variables correlacionadas."
+}

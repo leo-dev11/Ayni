@@ -21,20 +21,14 @@
     "decision": "approve",
     "razones": [
       {
-        "feature": "EXT_SOURCE_1",
-        "valor": NaN,
-        "contribucion": 0.1276,
-        "direccion": "aumenta_riesgo"
-      },
-      {
         "feature": "goods_credit_ratio",
-        "valor": 0.9380863039399625,
+        "valor": 0.9381,
         "contribucion": -0.1147,
         "direccion": "reduce_riesgo"
       },
       {
         "feature": "prev_credit_application_ratio",
-        "valor": 0.8638165458074291,
+        "valor": 0.8638,
         "contribucion": -0.1138,
         "direccion": "reduce_riesgo"
       },
@@ -45,10 +39,16 @@
         "direccion": "reduce_riesgo"
       },
       {
-        "feature": "employed_years",
-        "valor": 3.509924709103354,
-        "contribucion": 0.1014,
-        "direccion": "aumenta_riesgo"
+        "feature": "inst_late_rate",
+        "valor": 0.0,
+        "contribucion": -0.089,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "inst_paid_sum",
+        "valor": 266902.695,
+        "contribucion": -0.0649,
+        "direccion": "reduce_riesgo"
       }
     ]
   },
@@ -60,32 +60,32 @@
     "razones": [
       {
         "feature": "EXT_SOURCE_3",
-        "valor": 0.3572932680336494,
+        "valor": 0.3573,
         "contribucion": 0.3024,
         "direccion": "aumenta_riesgo"
       },
       {
         "feature": "prev_refusal_rate",
-        "valor": 0.8888888888888888,
+        "valor": 0.8889,
         "contribucion": 0.3012,
         "direccion": "aumenta_riesgo"
       },
       {
         "feature": "EXT_SOURCE_1",
-        "valor": 0.27686679934190833,
+        "valor": 0.2769,
         "contribucion": 0.2559,
         "direccion": "aumenta_riesgo"
       },
       {
-        "feature": "EXT_SOURCE_2",
-        "valor": 0.6468534445747545,
-        "contribucion": -0.2062,
-        "direccion": "reduce_riesgo"
+        "feature": "bureau_debt_ratio",
+        "valor": 0.9933,
+        "contribucion": 0.1883,
+        "direccion": "aumenta_riesgo"
       },
       {
-        "feature": "bureau_debt_ratio",
-        "valor": 0.9933414634146341,
-        "contribucion": 0.1883,
+        "feature": "inst_late_rate",
+        "valor": 0.1667,
+        "contribucion": 0.1482,
         "direccion": "aumenta_riesgo"
       }
     ]

@@ -26,6 +26,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from ayni.config import ID_COL, MLFLOW_URI, PROCESSED_DIR, REPORTS_DIR, ROOT, TARGET
+from ayni.export import resolver_version
 from ayni.split import SPLIT_META, TEST_PATH, fingerprint
 from ayni.threshold import (
     COSTO_FN,
@@ -186,7 +187,7 @@ def _verificar_test_congelado(test: pd.DataFrame) -> None:
 
 def cargar_modelo(version: str = "latest"):
     mlflow.set_tracking_uri(MLFLOW_URI)
-    return mlflow.lightgbm.load_model(f"models:/{REGISTERED_MODEL}/{version}")
+    return mlflow.lightgbm.load_model(f"models:/{REGISTERED_MODEL}/{resolver_version(version)}")
 
 
 def evaluar_test(version: str = "latest") -> dict:
@@ -217,6 +218,7 @@ def evaluar_test(version: str = "latest") -> dict:
     X = aplicar_categorias(X, vocabulario)
 
     modelo = cargar_modelo(version)
+    version = resolver_version(version)
     proba = modelo.predict_proba(X)[:, 1]
     y = test[TARGET].to_numpy()
 

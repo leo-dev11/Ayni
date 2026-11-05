@@ -22,8 +22,9 @@
   solicitantes; el corte calculado aprueba al **87.2 %**.
 - **El costo total baja un 16.9 %** (23 835 → 19 799) y la mora entre aprobados cae del
   **7.8 % al 5.2 %**.
-- **Excluir `CODE_GENDER` cuesta +0.0002 AUC.** Dos diezmilésimas. La decisión queda
-  con su precio publicado, y no hay argumento de rendimiento para revertirla.
+- **Excluir `CODE_GENDER` cuesta +0.0006 AUC** (0.7802 con género vs 0.7796 sin él, mismos
+  hiperparámetros). Menos de un milésimo: la decisión queda con su precio publicado y no hay
+  argumento de rendimiento para revertirla.
 - **`scale_pos_weight` empeora el modelo** (0.7774 vs 0.7796): el desbalance se trata en el umbral
   de decisión, no en el entrenamiento.
 
@@ -247,21 +248,59 @@ que el feature engineering no fue decorativo.
 ### Reason codes
 
 `ayni explain` genera el formato que consumirá `/explain`: las cinco features de mayor \|SHAP\|, con
-su valor, su contribución en log-odds y la dirección del riesgo.
+su valor, su contribución en log-odds y la dirección del riesgo. **Las razones se filtran por
+decisión:** un rechazo solo lleva motivos que suben el riesgo, y una aprobación solo los que lo
+bajan. Darle a un rechazado un argumento a su favor es confuso y, en banca, insostenible.
 
 ```json
 {"sk_id_curr": 288491, "probabilidad": 0.2413, "umbral": 0.16, "decision": "reject",
  "razones": [
-   {"feature": "EXT_SOURCE_3",      "valor": 0.357, "contribucion": 0.3024, "direccion": "aumenta_riesgo"},
-   {"feature": "prev_refusal_rate", "valor": 0.889, "contribucion": 0.3012, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_1",      "valor": 0.277, "contribucion": 0.2559, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_2",      "valor": 0.647, "contribucion": -0.2062, "direccion": "reduce_riesgo"},
-   {"feature": "bureau_debt_ratio", "valor": 0.993, "contribucion": 0.1883, "direccion": "aumenta_riesgo"}
+   {"feature": "EXT_SOURCE_3",      "valor": 0.3573, "contribucion": 0.3024, "direccion": "aumenta_riesgo"},
+   {"feature": "prev_refusal_rate", "valor": 0.8889, "contribucion": 0.3012, "direccion": "aumenta_riesgo"},
+   {"feature": "EXT_SOURCE_1",      "valor": 0.2769, "contribucion": 0.2559, "direccion": "aumenta_riesgo"},
+   {"feature": "bureau_debt_ratio", "valor": 0.9933, "contribucion": 0.1883, "direccion": "aumenta_riesgo"},
+   {"feature": "inst_late_rate",    "valor": 0.1667, "contribucion": 0.1482, "direccion": "aumenta_riesgo"}
  ]}
 ```
 
 Los valores están en **log-odds**, la escala en la que el modelo razona; convertirlos a puntos de
 score o a probabilidad es una decisión de presentación, no de cálculo.
+
+### Sesgo de la política, medido
+
+Excluir `CODE_GENDER` del modelo no garantiza un resultado justo: el sesgo puede entrar por variables
+correlacionadas. Se auditan las **predicciones OOF** (las mismas con las que se eligió el umbral) y se
+mira cada grupo por separado: tasa de aprobación y mora **entre los aprobados**.
+
+| Género | n | Aprobación | Mora entre aprobados | Regla del 80 % |
+|---|---:|---:|---:|---:|
+| F | 161 887 | **89.3 %** | 4.8 % | 1.00 |
+| M | 84 119 | 83.5 % | 6.5 % | 0.93 |
+
+| Tramo de edad | n | Aprobación | Mora entre aprobados | Regla del 80 % |
+|---|---:|---:|---:|---:|
+| <25 | 9 841 | 72.9 % | 7.5 % | **0.74** |
+| 25-34 | 58 061 | 79.8 % | 6.5 % | 0.81 |
+| 35-44 | 67 372 | 87.2 % | 5.6 % | 0.88 |
+| 45-54 | 56 151 | 90.4 % | 5.0 % | 0.92 |
+| 55-64 | 48 357 | 94.6 % | 4.3 % | 0.96 |
+| 65+ | 6 226 | 98.6 % | 3.4 % | 1.00 |
+
+![Sesgo por grupo](reports/figures/12_sesgo_decision.png)
+
+**Lectura honesta de los dos resultados, que no son el mismo caso:**
+
+- **Género: cumple la regla del 80 %** (0.93). La brecha de aprobación (89.3 % vs 83.5 %)
+  acompaña a una brecha de mora en el mismo sentido (4.8 % vs 6.5 %): el grupo al que se aprueba
+  menos es el que efectivamente impaga más. No es evidente que haya discriminación, aunque tampoco
+  se puede demostrar lo contrario con una sola foto.
+- **Edad: no la cumple** (0.74). El modelo aprueba al 72.9 % de los menores de 25 y al 98.6 % de
+  los mayores de 65. La mora va en la misma dirección (7.5 % vs 3.4 %), así que la diferencia está
+  alineada con el riesgo — pero **que sea rentable no la hace automáticamente legal**, y en varios
+  marcos la edad es categoría protegida con matices. Queda como limitación declarada, no resuelta.
+
+Se audita `CODE_GENDER` aunque no esté en el modelo precisamente porque la decisión puede seguir
+siendo desigual por variables correlacionadas.
 
 ### Monitoreo de drift
 
@@ -312,9 +351,11 @@ seis figuras en [`reports/figures/`](reports/figures/).
   stopping se dispara en la primera iteración porque la logloss de validación deja de ser
   comparable. El desbalance se resuelve eligiendo el umbral por costo, no recoloreando el
   entrenamiento. → *Corregido en el camino:* el early stopping ahora mide **AUC**, no logloss.
-- **`CODE_GENDER` fuera, con precio:** cuesta **+0.0002 AUC** (0.7802 con género vs 0.7800 sin él).
-  La variante con género se entrenó solo para tener el número; el campeón se elige únicamente entre
-  corridas sin género, y esa regla está en código (`elegir_campeon`), no en un comentario.
+- **`CODE_GENDER` fuera, con precio:** cuesta **+0.0006 AUC**, medido contra la corrida de
+  **iguales hiperparámetros** (0.7802 vs 0.7796). Compararlo contra la mejor corrida ajustada
+  habría mezclado el efecto del género con el del tuning. La variante con género se entrenó solo
+  para tener el número; el campeón se elige únicamente entre corridas sin género, y esa regla
+  está en código (`elegir_campeon`), no en un comentario.
 - **El campeón sale de la validación cruzada, nunca del test:** `elegir_campeon` ordena por
   `roc_auc_cv` y el test se mantiene cerrado hasta la evaluación final.
 - **`learning_rate` 0.03 y `num_leaves` 63** frente a 0.05/31: +0.0004 AUC con el doble de tiempo
@@ -328,7 +369,7 @@ seis figuras en [`reports/figures/`](reports/figures/).
 - **La matriz de costos es supuesta.** 5:1 es un supuesto de negocio razonable, no un dato del banco. El pipeline la deja como parámetro: con 20:1 el umbral baja a 0.045 y se aprueba al 48.6 %, así que **la política de riesgo se cambia sin reentrenar**, solo moviendo dos números.
 - **El drift es simulado.** Se alteran features de `train` a propósito; detectar ese drift prueba que el monitoreo funciona, no que el modelo aguante producción real.
 - **El contrato HTTP es parcial.** La API pide 23 campos de negocio y el modelo usa 185: lo que no llega se trata como nulo, así que una petición incompleta no es equivalente al expediente completo. El campo `cobertura` lo expone en cada respuesta.
-- **Riesgo de sesgo.** Edad y género correlacionan con el target y con decisiones históricas; el modelo puede heredar discriminación aunque no las use directamente.
+- **Riesgo de sesgo: medido, no resuelto.** La auditoría muestra que la política de edad incumple la regla del 80 % (0.74) y la de género la cumple (0.93), con la mora acompañando a la aprobación en ambos casos. Estar alineado con el riesgo no cierra la pregunta legal.
 - **Una sola foto temporal.** No hay validación out-of-time porque el dataset no trae fechas de originación reales.
 - **Trabajo futuro:** reentrenamiento programado, feature store, y reglas de negocio encima del score.
 
@@ -358,6 +399,7 @@ make evaluate                       # umbral por costo sobre las predicciones OO
 ayni evaluate --confirmar-test      # evaluación final: lee el test congelado
 make export                         # artefacto de modelo para la API
 make drift                          # simula producción y mide drift
+ayni fairness                       # aprobación y mora por género y edad
 
 # 4. Servicios
 docker compose up                   # API :8000/docs · MLflow :5000
@@ -398,6 +440,7 @@ Ayni/
 │   ├── evaluate.py               # umbral OOF y evaluación en test
 │   ├── explain.py                # SHAP global, local y reason codes
 │   ├── drift.py                  # simulación de producción + Evidently
+│   ├── fairness.py               # auditoría de sesgo de la política
 │   ├── export.py                 # artefacto para servir
 │   ├── api.py                    # FastAPI: /health, /predict, /explain
 │   └── cli.py                    # python -m ayni <comando>
@@ -413,10 +456,11 @@ Ayni/
 │   ├── test_threshold.py
 │   └── test_train.py
 ├── reports/
-│   ├── figures/                  # 11 figuras
+│   ├── figures/                  # 12 figuras
 │   ├── umbral.json
 │   ├── evaluacion_test.json
 │   ├── drift_resumen.json
+│   ├── sesgo_decision.json
 │   └── razones_ejemplo.json
 ├── .github/workflows/ci.yml
 ├── Dockerfile
