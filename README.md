@@ -14,7 +14,9 @@
 
 ## Resultados clave
 
-**Evaluación final en el test congelado (61 503 solicitudes).**
+**Evaluación final en el test congelado (61 503 solicitudes).** El test se leyó dos veces: la
+segunda, tras fijar `deterministic=True` en LightGBM para que los números fueran reproducibles
+(ROC-AUC 0.7829 → 0.7815). Ninguna decisión se tomó mirando el test.
 
 - **ROC-AUC 0.782** y **PR-AUC 0.277** en test (validación cruzada: 0.780 / 0.269). Sin sorpresa
   desagradable: el modelo generaliza.
@@ -151,11 +153,11 @@ flowchart LR
 2. **Validación antes de modelar.** Tres esquemas Pandera (tabla cruda, features, particiones) cortan el pipeline si aparecen tipos, rangos o nulos imposibles; `ayni validate` comprueba lo ya escrito y devuelve código de salida 1. Un CSV corrupto de prueba en `tests/fixtures/` demuestra que el corte funciona.
 3. **Split estratificado 80/20 con semilla fija.** El 20 % de test no se toca hasta la evaluación final; todo lo demás se decide en validación cruzada.
 4. **Dos métricas, no una.** ROC-AUC para comparar con el estándar de la competencia y PR-AUC porque con 8 % de positivos es la lectura honesta.
-5. **Se comparó el peso de clases contra no usarlo.** `scale_pos_weight` bajó el ROC-AUC (0.7774 vs 0.7796): el desbalance se resuelve en el umbral de decisión, no recoloreando el entrenamiento.
+5. **Se comparó el peso de clases contra no usarlo.** `scale_pos_weight` bajó el ROC-AUC (0.7776 vs 0.7789): el desbalance se resuelve en el umbral de decisión, no recoloreando el entrenamiento.
 6. **Umbral por costo.** Se recorre la curva de umbrales y se elige el que minimiza el costo esperado, con la matriz documentada.
 7. **Explicación dentro del servicio.** SHAP global para el reporte, SHAP local convertido en *reason codes* para cada decisión individual.
 8. **Trazabilidad completa.** Cada corrida queda en MLflow y el mejor modelo va al Model Registry con su umbral pegado al artefacto.
-9. **Compuerta de calidad.** `ayni evaluate` falla si el ROC-AUC del test baja de **0.75**, y CI corre los 65 tests en cada push sin necesitar el dataset: todo se construye con datos sintéticos y modelos diminutos.
+9. **Compuerta de calidad.** `ayni evaluate` falla si el ROC-AUC del test baja de **0.75**, y CI corre los 66 tests en cada push sin necesitar el dataset: todo se construye con datos sintéticos y modelos diminutos.
 
 ---
 
@@ -207,26 +209,26 @@ lo que confirma que las probabilidades están bien calibradas:
 ![Importancia de features](reports/figures/07_importancia_lgbm.png)
 
 `ORGANIZATION_TYPE` domina por delante de las tres `EXT_SOURCE_*`: es una categórica de 58 niveles
-y la importancia por ganancia de split favorece ese tipo de variable, así que el orden exacto hay
-que leerlo con pinzas. La lectura sólida es que **las `EXT_SOURCE_*` son el bloque continuo más
-fuerte**, y que los ratios construidos en el feature engineering (`prev_credit_application_ratio`,
+y contar cuántas veces se usa una feature para dividir un nodo (la importancia por defecto de
+LightGBM) favorece ese tipo de variable, así que el orden exacto hay que leerlo con pinzas. La
+lectura sólida es que **las `EXT_SOURCE_*` son el bloque continuo más fuerte**, y que los ratios construidos en el feature engineering (`prev_credit_application_ratio`,
 `bureau_debt_ratio`, `annuity_income_ratio`) entran directo al top 20.
 
 ### Explicabilidad
 
-SHAP sobre una muestra de 5 000 solicitudes de train. **El ranking no coincide con la importancia por
-ganancia de split, y esa discrepancia es el punto:** `ORGANIZATION_TYPE` era la feature
-#1 por ganancia (categórica de 58 niveles, que infla esa métrica) y cae al **#6** cuando se mide el
-impacto real sobre la predicción.
+SHAP sobre una muestra de 5 000 solicitudes de train. **El ranking no coincide con la importancia
+nativa de LightGBM, y esa discrepancia es el punto:** `ORGANIZATION_TYPE` es la feature #1 por
+número de splits (categórica de 58 niveles, que infla esa métrica), la #3 por ganancia y cae al
+**#6** cuando se mide el impacto real sobre la predicción.
 
 | # | Feature | \|SHAP\| medio |
 |---|---|---:|
-| 1 | `EXT_SOURCE_2` | 0.3048 |
-| 2 | `EXT_SOURCE_3` | 0.2749 |
-| 3 | `EXT_SOURCE_1` | 0.1569 |
-| 4 | `prev_cnt_payment_max` | 0.1171 |
-| 5 | `goods_credit_ratio` | 0.1054 |
-| 6 | `ORGANIZATION_TYPE` | 0.0925 |
+| 1 | `EXT_SOURCE_2` | 0.3049 |
+| 2 | `EXT_SOURCE_3` | 0.2771 |
+| 3 | `EXT_SOURCE_1` | 0.1576 |
+| 4 | `prev_cnt_payment_max` | 0.1151 |
+| 5 | `goods_credit_ratio` | 0.1039 |
+| 6 | `ORGANIZATION_TYPE` | 0.0919 |
 
 ![SHAP summary](reports/figures/09_shap_summary.png)
 
@@ -238,12 +240,13 @@ que el feature engineering no fue decorativo.
 
 **Dos casos reales, elegidos por su probabilidad mediana dentro de cada grupo** (no los extremos):
 
-- **Aprobado (P = 0.040):** aprueba por el lado bueno —`cc_utilization_max = 0` (nunca usó el
-  límite de su tarjeta), una cuota baja para su ingreso y 8 años de antigüedad de coche. Ninguna de
-  sus cinco razones sube el riesgo, que es justo lo que se le dice al cliente.
-- **Rechazado (P = 0.240):** `EXT_SOURCE_3 = 0.30` aporta +0.532, un `goods_credit_ratio` de 0.70
-  (financia el 70 % del bien) suma +0.329 y `bureau_debt_ratio = 0.75` añade +0.157. Tres motivos
-  que un analista de crédito puede defender palabra por palabra.
+- **Aprobado (P = 0.040):** lo sostiene sobre todo un `EXT_SOURCE_3` alto (0.87, −0.515), con
+  apoyo de la edad (51 años), cero deuda viva en el buró y créditos previos a 12 cuotas como
+  máximo. La figura muestra también lo que juega en contra (`EXT_SOURCE_2`, +0.41); las razones
+  que se le comunican, en cambio, son solo las que bajan el riesgo.
+- **Rechazado (P = 0.234):** `EXT_SOURCE_2 = 0.25` aporta +0.502, trabajar en construcción
+  (`ORGANIZATION_TYPE`) suma +0.353 y haber pagado tarde el 35 % de sus cuotas previas
+  (`inst_late_rate`) añade +0.191. Tres motivos que un analista de crédito puede defender.
 
 ### Reason codes
 
@@ -253,13 +256,13 @@ decisión:** un rechazo solo lleva motivos que suben el riesgo, y una aprobació
 bajan. Darle a un rechazado un argumento a su favor es confuso y, en banca, insostenible.
 
 ```json
-{"sk_id_curr": 263625, "probabilidad": 0.2399, "umbral": 0.155, "decision": "reject",
+{"sk_id_curr": 396395, "probabilidad": 0.2344, "umbral": 0.155, "decision": "reject",
  "razones": [
-   {"feature": "EXT_SOURCE_3",        "valor": 0.2956, "contribucion": 0.5323, "direccion": "aumenta_riesgo"},
-   {"feature": "goods_credit_ratio",  "valor": 0.7030, "contribucion": 0.3287, "direccion": "aumenta_riesgo"},
-   {"feature": "EXT_SOURCE_2",        "valor": 0.3532, "contribucion": 0.3122, "direccion": "aumenta_riesgo"},
-   {"feature": "bureau_debt_ratio",   "valor": 0.7537, "contribucion": 0.1569, "direccion": "aumenta_riesgo"},
-   {"feature": "prev_cnt_payment_max","valor": 36.0,   "contribucion": 0.1382, "direccion": "aumenta_riesgo"}
+   {"feature": "EXT_SOURCE_2",         "valor": 0.2479,         "contribucion": 0.5023, "direccion": "aumenta_riesgo"},
+   {"feature": "ORGANIZATION_TYPE",    "valor": "Construction", "contribucion": 0.3533, "direccion": "aumenta_riesgo"},
+   {"feature": "inst_late_rate",       "valor": 0.35,           "contribucion": 0.1913, "direccion": "aumenta_riesgo"},
+   {"feature": "OCCUPATION_TYPE",      "valor": "Laborers",     "contribucion": 0.1898, "direccion": "aumenta_riesgo"},
+   {"feature": "prev_cnt_payment_max", "valor": 42.0,           "contribucion": 0.1379, "direccion": "aumenta_riesgo"}
  ]}
 ```
 
@@ -270,37 +273,47 @@ score o a probabilidad es una decisión de presentación, no de cálculo.
 
 Excluir `CODE_GENDER` del modelo no garantiza un resultado justo: el sesgo puede entrar por variables
 correlacionadas. Se auditan las **predicciones OOF** (las mismas con las que se eligió el umbral) y se
-mira cada grupo por separado: tasa de aprobación y mora **entre los aprobados**.
+mira cada grupo por separado con tres preguntas distintas:
 
-| Género | n | Aprobación | Aprobación entre los que pagan | Mora entre aprobados | Regla del 80 % |
-|---|---:|---:|---:|---:|---:|
-| F | 161 887 | **89.3 %** | **89.4 %** | 4.8 % | 1.00 |
-| M | 84 119 | 83.4 % | 83.5 % | 6.5 % | 0.93 |
+- **¿A quién se aprueba?** Tasa de aprobación total y entre quienes sí pagaron.
+- **¿Qué riesgo se asume?** Mora entre los aprobados.
+- **¿El modelo le asigna a cada grupo el riesgo que tiene?** Mora predicha (media de la
+  probabilidad) contra mora observada: es la **calibración por grupo**, la única de las tres que
+  dice si una brecha la explica el riesgo.
 
-| Tramo de edad | n | Aprobación | Aprobación entre los que pagan | Mora entre aprobados | Regla del 80 % |
-|---|---:|---:|---:|---:|---:|
-| <25 | 9 841 | 72.8 % | **72.6 %** | 7.6 % | **0.74** |
-| 25-34 | 58 061 | 79.7 % | 79.8 % | 6.5 % | 0.81 |
-| 35-44 | 67 372 | 87.0 % | 87.2 % | 5.6 % | 0.88 |
-| 45-54 | 56 151 | 90.4 % | 90.6 % | 4.9 % | 0.92 |
-| 55-64 | 48 357 | 94.7 % | 94.8 % | 4.3 % | 0.96 |
-| 65+ | 6 226 | 98.7 % | 98.7 % | 3.4 % | 1.00 |
+| Género | n | Aprobación | Aprob. entre los que pagan | Mora observada | Mora predicha | Mora entre aprobados | Regla del 80 % |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| F | 161 887 | **88.7 %** | 90.9 % | 7.0 % | **7.3 %** | 4.7 % | 1.00 |
+| M | 84 119 | 82.6 % | 86.1 % | 10.1 % | **9.3 %** | 6.4 % | 0.93 |
+
+| Tramo de edad | n | Aprobación | Aprob. entre los que pagan | Mora observada | Mora predicha | Mora entre aprobados | Regla del 80 % |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| <25 | 9 841 | 71.5 % | 75.6 % | 12.4 % | 12.6 % | 7.5 % | **0.73** |
+| 25-34 | 58 061 | 78.8 % | 82.6 % | 10.7 % | 10.5 % | 6.4 % | **0.799** |
+| 35-44 | 67 372 | 86.4 % | 89.2 % | 8.4 % | 8.1 % | 5.5 % | 0.88 |
+| 45-54 | 56 151 | 89.8 % | 91.9 % | 7.0 % | 7.0 % | 4.8 % | 0.91 |
+| 55-64 | 48 357 | 94.3 % | 95.5 % | 5.4 % | 5.4 % | 4.2 % | 0.96 |
+| 65+ | 6 226 | 98.6 % | 98.9 % | 3.7 % | 3.6 % | 3.4 % | 1.00 |
 
 ![Sesgo por grupo](reports/figures/12_sesgo_decision.png)
 
-**Lectura honesta de los dos resultados, que no son el mismo caso:**
+**Lectura de los dos resultados, que no son el mismo caso:**
 
-- **Género: cumple la regla del 80 %** (0.93). La brecha de aprobación (89.3 % vs 83.4 %)
-  acompaña a una brecha de mora en el mismo sentido (4.8 % vs 6.5 %), y entre quienes pagan la
-  aprobación también se diferencia (89.4 % vs 83.5 %): parte de la brecha es riesgo, no toda. No es
-  evidencia de discriminación, pero tampoco lo contrario con una sola foto.
-- **Edad: no la cumple** (0.74). La prueba que importa es la columna "aprobación entre los que
-  pagan": entre quienes **sí** habrían pagado, se aprueba al **72.6 %** de los menores de 25 y al
-  **98.7 %** de los mayores de 65. Si la brecha la explicara el riesgo, esa columna debería ser
-  parecida en todos los tramos; no lo es. La mora también va en la misma dirección (7.6 % vs 3.4 %),
-  así que el modelo es rentable al hacerlo — pero **que sea rentable no lo hace automáticamente
-  legal**, y en varios marcos la edad es categoría protegida con matices. Queda como limitación
-  declarada, no resuelta.
+- **Edad: no cumple la regla del 80 %** en menores de 25 (0.73) y queda justo por debajo en 25-34
+  (0.799). Pero la calibración es buena en todos los tramos (predicha y observada difieren en
+  menos de medio punto): el modelo le asigna a cada edad el riesgo que realmente tiene, así que la
+  brecha es de **riesgo medido**, no un error del modelo. Que los buenos pagadores jóvenes se
+  aprueben menos (75.6 % vs 98.9 %) es la consecuencia esperable: con tasas de impago distintas, un
+  modelo calibrado **no puede** igualar además la aprobación de los buenos pagadores; las dos
+  propiedades son incompatibles salvo con un modelo perfecto. Elegir cuál priorizar es una
+  decisión de política y, en varios marcos legales, la edad es categoría protegida con matices.
+  Queda declarado, no resuelto.
+- **Género: cumple la regla del 80 %** (0.93), pero la calibración muestra lo que la tasa de
+  aprobación esconde. Sin `CODE_GENDER`, el modelo **sobrestima el riesgo de las mujeres** (7.3 %
+  predicho vs 7.0 % real) y **subestima el de los hombres** (9.3 % vs 10.1 %): al no ver la
+  variable, promedia a ambos grupos, y ese promedio lo pagan ellas. Excluir una variable no la
+  vuelve neutral. Corregirlo exigiría usar el género (por ejemplo, para calibrar por grupo), lo
+  que tiene su propio problema legal; también queda declarado.
 
 Se audita `CODE_GENDER` aunque no esté en el modelo precisamente porque la decisión puede seguir
 siendo desigual por variables correlacionadas.
@@ -348,31 +361,31 @@ seis figuras en [`reports/figures/`](reports/figures/).
   todos tiene 92 % de accuracy y quiebra al banco.
 - **LightGBM como modelo principal, regresión logística como baseline:** los datos son tabulares, con nulos y categóricas de alta cardinalidad; el baseline existe para demostrar cuánto aporta la complejidad, no para competir.
 - **Agregaciones en SQL sobre DuckDB en vez de `groupby` en pandas:** las tablas relacionadas tienen decenas de millones de filas; el SQL es reproducible, legible y no exige cargar todo en RAM.
-- **El test no se toca hasta el final:** cada decisión de features, hiperparámetros y umbral se toma en validación. Un test consultado dos veces deja de ser test.
+- **El test no se toca hasta el final:** cada decisión de features, hiperparámetros y umbral se toma en validación. Un test consultado para decidir deja de ser test. Se leyó una segunda vez solo para volver a medir tras fijar `deterministic=True` (reproducibilidad, no ajuste): el ROC-AUC bajó de 0.7829 a 0.7815 y se publica el segundo.
 - **Umbral por costo:** aprobar a un mal pagador cuesta 5 y rechazar a un buen cliente cuesta 1; el punto que minimiza el costo esperado no es el que maximiza el F1.
-- **Se descartó `scale_pos_weight`:** con pesos, el ROC-AUC baja (0.7774 vs 0.7796) y el early
+- **Se descartó `scale_pos_weight`:** con pesos, el ROC-AUC baja (0.7776 vs 0.7789) y el early
   stopping se dispara en la primera iteración porque la logloss de validación deja de ser
   comparable. El desbalance se resuelve eligiendo el umbral por costo, no recoloreando el
   entrenamiento. → *Corregido en el camino:* el early stopping ahora mide **AUC**, no logloss.
-- **`CODE_GENDER` fuera, con precio:** cuesta **+0.0006 AUC**, medido contra la corrida de
-  **iguales hiperparámetros** (0.7802 vs 0.7796). Compararlo contra la mejor corrida ajustada
+- **`CODE_GENDER` fuera, con precio:** cuesta **+0.0014 AUC**, medido contra la corrida de
+  **iguales hiperparámetros** (0.7802 vs 0.7789). Compararlo contra la mejor corrida ajustada
   habría mezclado el efecto del género con el del tuning. La variante con género se entrenó solo
   para tener el número; el campeón se elige únicamente entre corridas sin género, y esa regla
   está en código (`elegir_campeon`), no en un comentario.
 - **El campeón sale de la validación cruzada, nunca del test:** `elegir_campeon` ordena por
   `roc_auc_cv` y el test se mantiene cerrado hasta la evaluación final.
-- **`learning_rate` 0.03 y `num_leaves` 63** frente a 0.05/31: +0.0004 AUC con el doble de tiempo
-  (76 s vs 52 s). Ajuste de hiperparámetros mínimo, sin búsqueda exhaustiva: con una desviación
+- **`learning_rate` 0.03 y `num_leaves` 63** frente a 0.05/31: +0.0009 AUC con un 50 % más de
+  tiempo (56 s vs 38 s). Ajuste de hiperparámetros mínimo, sin búsqueda exhaustiva: con una desviación
   entre folds de ±0.0026, optimizar más fino es ajustar ruido.
 
 ---
 
 ## Limitaciones y trabajo futuro
 
-- **La matriz de costos es supuesta.** 5:1 es un supuesto de negocio razonable, no un dato del banco. El pipeline la deja como parámetro: con 20:1 el umbral baja a 0.045 y se aprueba al 48.6 %, así que **la política de riesgo se cambia sin reentrenar**, solo moviendo dos números.
+- **La matriz de costos es supuesta.** 5:1 es un supuesto de negocio razonable, no un dato del banco. El pipeline la deja como parámetro: con 20:1 el umbral baja a 0.045 y se aprueba al 48.1 %, así que **la política de riesgo se cambia sin reentrenar**, solo moviendo dos números.
 - **El drift es simulado.** Se alteran features de `train` a propósito; detectar ese drift prueba que el monitoreo funciona, no que el modelo aguante producción real.
 - **El contrato HTTP es parcial.** La API pide 23 campos de negocio y el modelo usa 185: lo que no llega se trata como nulo, así que una petición incompleta no es equivalente al expediente completo. El campo `cobertura` lo expone en cada respuesta.
-- **Riesgo de sesgo: medido, no resuelto.** La auditoría muestra que la política de edad incumple la regla del 80 % (0.74) y la de género la cumple (0.93), con la mora acompañando a la aprobación en ambos casos. Estar alineado con el riesgo no cierra la pregunta legal.
+- **Riesgo de sesgo: medido, no resuelto.** Por edad, la política incumple la regla del 80 % (0.73 en menores de 25) aunque el modelo está calibrado por tramo. Por género la cumple (0.93), pero sin la variable el modelo sobrestima el riesgo de las mujeres. Estar alineado con el riesgo no cierra la pregunta legal.
 - **Una sola foto temporal.** No hay validación out-of-time porque el dataset no trae fechas de originación reales.
 - **Trabajo futuro:** reentrenamiento programado, feature store, y reglas de negocio encima del score.
 
@@ -397,12 +410,12 @@ ayni validate                    # esquemas Pandera sobre lo que haya en disco
 # 3. Pipeline
 make features                       # SQL en DuckDB → features.parquet + split
 make train                          # 5 corridas con CV + registro en MLflow
-make explain                        # SHAP global, local y reason codes
 make evaluate                       # umbral por costo sobre las predicciones OOF
 ayni evaluate --confirmar-test      # evaluación final: lee el test congelado
+make explain                        # SHAP, reason codes y figura de importancia (usa el umbral)
+make fairness                       # aprobación, mora y calibración por grupo (usa el umbral)
+make drift                          # simula producción y mide drift (usa el top SHAP)
 make export                         # artefacto de modelo para la API
-make drift                          # simula producción y mide drift
-ayni fairness                       # aprobación y mora por género y edad
 
 # 4. Servicios
 docker compose up                   # API :8000/docs · MLflow :5000
@@ -412,7 +425,9 @@ pytest
 ```
 
 En Windows no hay `make`: cada target existe también como subcomando de `ayni`
-(`ayni parquet`, `ayni features`, `ayni train`, `ayni evaluate`, `ayni drift`).
+(`ayni features` + `ayni split`, `ayni train`, `ayni evaluate`, `ayni explain`,
+`ayni fairness`, `ayni drift`, `ayni export-model`). El orden importa: `explain` y `fairness` leen
+el umbral que escribe `evaluate`.
 
 ---
 

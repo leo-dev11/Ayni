@@ -1,6 +1,6 @@
 {
   "version_modelo": "1",
-  "umbral": 0.16,
+  "umbral": 0.155,
   "n_muestra_shap": 5000,
   "top_global": {
     "EXT_SOURCE_2": 0.3049,
@@ -15,82 +15,83 @@
     "bureau_debt_ratio": 0.0726
   },
   "aprobado": {
-    "sk_id_curr": 202950,
-    "probabilidad": 0.04,
-    "umbral": 0.16,
+    "sk_id_curr": 309721,
+    "probabilidad": 0.0397,
+    "umbral": 0.155,
     "decision": "approve",
     "razones": [
       {
-        "feature": "cc_utilization_max",
+        "feature": "EXT_SOURCE_3",
+        "valor": 0.8659,
+        "contribucion": -0.5148,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "age_years",
+        "valor": 51.2909,
+        "contribucion": -0.0726,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "prev_cnt_payment_max",
+        "valor": 12.0,
+        "contribucion": -0.0662,
+        "direccion": "reduce_riesgo"
+      },
+      {
+        "feature": "bureau_debt_ratio",
         "valor": 0.0,
-        "contribucion": -0.1416,
+        "contribucion": -0.0645,
         "direccion": "reduce_riesgo"
       },
       {
-        "feature": "AMT_ANNUITY",
-        "valor": 12919.5,
-        "contribucion": -0.126,
-        "direccion": "reduce_riesgo"
-      },
-      {
-        "feature": "OWN_CAR_AGE",
-        "valor": 8.0,
-        "contribucion": -0.1259,
-        "direccion": "reduce_riesgo"
-      },
-      {
-        "feature": "inst_paid_sum",
-        "valor": 3386538.405,
-        "contribucion": -0.0825,
-        "direccion": "reduce_riesgo"
-      },
-      {
-        "feature": "prev_credit_application_ratio",
-        "valor": 0.9979,
-        "contribucion": -0.0812,
+        "feature": "bureau_days_credit_mean",
+        "valor": -1963.0,
+        "contribucion": -0.0603,
         "direccion": "reduce_riesgo"
       }
     ]
   },
   "rechazado": {
-    "sk_id_curr": 263625,
-    "probabilidad": 0.2399,
-    "umbral": 0.16,
+    "sk_id_curr": 396395,
+    "probabilidad": 0.2344,
+    "umbral": 0.155,
     "decision": "reject",
     "razones": [
       {
-        "feature": "EXT_SOURCE_3",
-        "valor": 0.2956,
-        "contribucion": 0.5323,
-        "direccion": "aumenta_riesgo"
-      },
-      {
-        "feature": "goods_credit_ratio",
-        "valor": 0.703,
-        "contribucion": 0.3287,
-        "direccion": "aumenta_riesgo"
-      },
-      {
         "feature": "EXT_SOURCE_2",
-        "valor": 0.3532,
-        "contribucion": 0.3122,
+        "valor": 0.2479,
+        "contribucion": 0.5023,
         "direccion": "aumenta_riesgo"
       },
       {
-        "feature": "bureau_debt_ratio",
-        "valor": 0.7537,
-        "contribucion": 0.1569,
+        "feature": "ORGANIZATION_TYPE",
+        "valor": "Construction",
+        "contribucion": 0.3533,
+        "direccion": "aumenta_riesgo"
+      },
+      {
+        "feature": "inst_late_rate",
+        "valor": 0.35,
+        "contribucion": 0.1913,
+        "direccion": "aumenta_riesgo"
+      },
+      {
+        "feature": "OCCUPATION_TYPE",
+        "valor": "Laborers",
+        "contribucion": 0.1898,
         "direccion": "aumenta_riesgo"
       },
       {
         "feature": "prev_cnt_payment_max",
-        "valor": 36.0,
-        "contribucion": 0.1382,
+        "valor": 42.0,
+        "contribucion": 0.1379,
         "direccion": "aumenta_riesgo"
       }
     ]
   },
   "figuras": [
+    "reports/figures/07_importancia_lgbm.png",
     "reports/figures/09_shap_summary.png",
     "reports/figures/10_shap_local.png"
   ]

@@ -1,94 +1,112 @@
 {
   "corrida": "lgbm-ajustado",
-  "umbral": 0.16,
+  "umbral": 0.155,
   "n": 246008,
   "genero": [
     {
       "CODE_GENDER": "F",
       "n": 161887,
-      "tasa_aprobacion": 0.893,
+      "tasa_aprobacion": 0.8872,
       "tasa_impago": 0.07,
-      "mora_entre_aprobados": 0.0479,
-      "aprobacion_pagadores": 0.9142,
+      "mora_predicha": 0.0727,
+      "mora_entre_aprobados": 0.0471,
+      "aprobacion_pagadores": 0.9091,
+      "desvio_calibracion": -0.0027,
       "ratio_vs_mejor": 1.0
     },
     {
       "CODE_GENDER": "M",
       "n": 84119,
-      "tasa_aprobacion": 0.8343,
+      "tasa_aprobacion": 0.8264,
       "tasa_impago": 0.1014,
-      "mora_entre_aprobados": 0.0651,
-      "aprobacion_pagadores": 0.868,
-      "ratio_vs_mejor": 0.9343
+      "mora_predicha": 0.0925,
+      "mora_entre_aprobados": 0.0639,
+      "aprobacion_pagadores": 0.8608,
+      "desvio_calibracion": 0.0089,
+      "ratio_vs_mejor": 0.9315
     },
     {
       "CODE_GENDER": "XNA",
       "n": 2,
       "tasa_aprobacion": 1.0,
       "tasa_impago": 0.0,
+      "mora_predicha": 0.0564,
       "mora_entre_aprobados": 0.0,
       "aprobacion_pagadores": 1.0,
-      "ratio_vs_mejor": 1.1198
+      "desvio_calibracion": -0.0564,
+      "ratio_vs_mejor": 1.1271
     }
   ],
   "edad": [
     {
       "tramo_edad": "<25",
       "n": 9841,
-      "tasa_aprobacion": 0.728,
+      "tasa_aprobacion": 0.7149,
       "tasa_impago": 0.1244,
-      "mora_entre_aprobados": 0.0757,
-      "aprobacion_pagadores": 0.7685,
-      "ratio_vs_mejor": 0.738
+      "mora_predicha": 0.126,
+      "mora_entre_aprobados": 0.0746,
+      "aprobacion_pagadores": 0.7555,
+      "desvio_calibracion": -0.0016,
+      "ratio_vs_mejor": 0.7254
     },
     {
       "tramo_edad": "25-34",
       "n": 58061,
-      "tasa_aprobacion": 0.7968,
+      "tasa_aprobacion": 0.7877,
       "tasa_impago": 0.1069,
-      "mora_entre_aprobados": 0.0648,
-      "aprobacion_pagadores": 0.8344,
-      "ratio_vs_mejor": 0.8077
+      "mora_predicha": 0.1054,
+      "mora_entre_aprobados": 0.0636,
+      "aprobacion_pagadores": 0.8259,
+      "desvio_calibracion": 0.0015,
+      "ratio_vs_mejor": 0.7993
     },
     {
       "tramo_edad": "35-44",
       "n": 67372,
-      "tasa_aprobacion": 0.8704,
+      "tasa_aprobacion": 0.864,
       "tasa_impago": 0.0844,
-      "mora_entre_aprobados": 0.056,
-      "aprobacion_pagadores": 0.8974,
-      "ratio_vs_mejor": 0.8823
+      "mora_predicha": 0.0808,
+      "mora_entre_aprobados": 0.055,
+      "aprobacion_pagadores": 0.8917,
+      "desvio_calibracion": 0.0036,
+      "ratio_vs_mejor": 0.8767
     },
     {
       "tramo_edad": "45-54",
       "n": 56151,
-      "tasa_aprobacion": 0.9038,
+      "tasa_aprobacion": 0.8983,
       "tasa_impago": 0.0697,
-      "mora_entre_aprobados": 0.0494,
-      "aprobacion_pagadores": 0.9236,
-      "ratio_vs_mejor": 0.9162
+      "mora_predicha": 0.0695,
+      "mora_entre_aprobados": 0.0484,
+      "aprobacion_pagadores": 0.9189,
+      "desvio_calibracion": 0.0003,
+      "ratio_vs_mejor": 0.9115
     },
     {
       "tramo_edad": "55-64",
       "n": 48357,
-      "tasa_aprobacion": 0.9469,
+      "tasa_aprobacion": 0.9429,
       "tasa_impago": 0.0537,
-      "mora_entre_aprobados": 0.0426,
-      "aprobacion_pagadores": 0.958,
-      "ratio_vs_mejor": 0.9599
+      "mora_predicha": 0.0541,
+      "mora_entre_aprobados": 0.0421,
+      "aprobacion_pagadores": 0.9545,
+      "desvio_calibracion": -0.0004,
+      "ratio_vs_mejor": 0.9568
     },
     {
       "tramo_edad": "65+",
       "n": 6226,
-      "tasa_aprobacion": 0.9865,
+      "tasa_aprobacion": 0.9855,
       "tasa_impago": 0.0368,
-      "mora_entre_aprobados": 0.0337,
-      "aprobacion_pagadores": 0.9897,
+      "mora_predicha": 0.0361,
+      "mora_entre_aprobados": 0.0336,
+      "aprobacion_pagadores": 0.9888,
+      "desvio_calibracion": 0.0007,
       "ratio_vs_mejor": 1.0
     }
   ],
-  "regla_80_por_genero": 0.9343,
-  "regla_80_por_edad": 0.738,
+  "regla_80_por_genero": 0.9315,
+  "regla_80_por_edad": 0.7254,
   "figura": "reports/figures/12_sesgo_decision.png",
   "nota": "CODE_GENDER no entra en el modelo; se mide porque el sesgo puede llegar por variables correlacionadas."
 }

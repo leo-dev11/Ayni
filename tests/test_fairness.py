@@ -98,3 +98,21 @@ def test_un_grupo_sin_aprobados_no_rompe_la_mora():
     assert tabla.loc[0, "tasa_aprobacion"] == 0.0
     assert tabla.loc[0, "mora_entre_aprobados"] == 0.0
     assert np.isfinite(tabla.loc[0, "ratio_vs_mejor"])
+
+
+def test_calibracion_por_grupo_compara_mora_predicha_con_observada():
+    datos = pd.DataFrame(
+        {
+            "grupo": ["A"] * 4 + ["B"] * 4,
+            # A: predice 0.5 de media y observa 0.5 → calibrado
+            # B: predice 0.5 de media y observa 0.25 → sobrestima el riesgo
+            "proba": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+            "umbral": 0.16,
+            "TARGET": [1, 1, 0, 0, 1, 0, 0, 0],
+        }
+    )
+    tabla = _metricas_grupo(datos, "grupo").set_index("grupo")
+
+    assert tabla.loc["A", "mora_predicha"] == pytest.approx(0.5)
+    assert tabla.loc["A", "desvio_calibracion"] == pytest.approx(0.0)
+    assert tabla.loc["B", "desvio_calibracion"] == pytest.approx(-0.25)

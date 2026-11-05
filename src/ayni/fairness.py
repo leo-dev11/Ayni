@@ -8,8 +8,15 @@ Se reportan dos cosas distintas, que se confunden con facilidad:
 - **Tasa de aprobación** por grupo: si el modelo aprueba sistemáticamente menos a un grupo.
 - **Mora entre aprobados** por grupo: si el riesgo que asume el banco es distinto. Una diferencia
   de aprobación solo es discriminatoria si el grupo no tiene peor riesgo que lo justifique.
+- **Calibración por grupo** (mora predicha vs. observada): si a cada grupo el modelo le asigna el
+  riesgo que de verdad tiene. Es la prueba de que una brecha "la explica el riesgo": un modelo que
+  sobrestima el riesgo de un grupo lo penaliza aunque la mora media sea distinta.
 
-La *regla del 80 %* (approval rate del grupo más favorecido ≥ 80 % del de referencia) se incluye
+Con tasas de impago distintas entre grupos, un modelo calibrado **no puede** aprobar igual a los
+buenos pagadores de todos ellos (calibración e igualdad de oportunidades son incompatibles salvo
+con un modelo perfecto). Por eso `aprobacion_pagadores` se reporta, pero no se lee sola.
+
+La *regla del 80 %* (aprobación de cada grupo ≥ 80 % de la del más favorecido) se incluye
 como referencia estándar de la industria, no como veredicto legal.
 """
 
@@ -51,6 +58,7 @@ def _metricas_grupo(df: pd.DataFrame, columna: str) -> pd.DataFrame:
         n=(TARGET, "size"),
         tasa_aprobacion=("aprobado", "mean"),
         tasa_impago=(TARGET, "mean"),
+        mora_predicha=("proba", "mean"),
     )
     mora = (
         trabajo[trabajo["aprobado"]]
@@ -72,7 +80,17 @@ def _metricas_grupo(df: pd.DataFrame, columna: str) -> pd.DataFrame:
         .reset_index()
     )
 
-    for clave in ("tasa_aprobacion", "tasa_impago", "mora_entre_aprobados", "aprobacion_pagadores"):
+    # calibración por grupo: observada − predicha; > 0 = el modelo subestima el riesgo del grupo
+    tabla["desvio_calibracion"] = tabla["tasa_impago"] - tabla["mora_predicha"]
+
+    for clave in (
+        "tasa_aprobacion",
+        "tasa_impago",
+        "mora_predicha",
+        "desvio_calibracion",
+        "mora_entre_aprobados",
+        "aprobacion_pagadores",
+    ):
         tabla[clave] = tabla[clave].round(4)
     validos = tabla[tabla["n"] >= MIN_GRUPO]["tasa_aprobacion"]
     mejor = float(validos.max()) if not validos.empty else 0.0
@@ -174,6 +192,9 @@ def ejecutar(corrida: str = CORRIDA) -> dict:
                 "CODE_GENDER",
                 "n",
                 "tasa_aprobacion",
+                "aprobacion_pagadores",
+                "tasa_impago",
+                "mora_predicha",
                 "mora_entre_aprobados",
                 "ratio_vs_mejor",
             ],
@@ -187,6 +208,9 @@ def ejecutar(corrida: str = CORRIDA) -> dict:
                 "tramo_edad",
                 "n",
                 "tasa_aprobacion",
+                "aprobacion_pagadores",
+                "tasa_impago",
+                "mora_predicha",
                 "mora_entre_aprobados",
                 "ratio_vs_mejor",
             ],

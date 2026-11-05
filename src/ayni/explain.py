@@ -40,6 +40,7 @@ warnings.filterwarnings("ignore", message=".*shap values output has changed.*")
 
 CATEGORIAS_PATH = PROCESSED_DIR / "categorias.json"
 UMBRAL_PATH = REPORTS_DIR / "umbral.json"
+IMPORTANCIA_PATH = ROOT / "reports" / "figures" / "07_importancia_lgbm.png"
 SUMMARY_PATH = ROOT / "reports" / "figures" / "09_shap_summary.png"
 LOCAL_PATH = ROOT / "reports" / "figures" / "10_shap_local.png"
 RAZONES_PATH = REPORTS_DIR / "razones_ejemplo.json"
@@ -175,6 +176,32 @@ def _ejemplos(modelo, X: pd.DataFrame, umbral: float) -> tuple[int, int]:
     )
 
 
+def _figura_importancia(modelo: lgb.LGBMClassifier, top: int = 20) -> Path:
+    """Importancia nativa de LightGBM por **número de splits** (el `importance_type` por defecto).
+
+    Es la métrica que más favorece a las categóricas de muchos niveles; se grafica para
+    contrastarla con SHAP, no como medida del impacto real.
+    """
+    booster = modelo.booster_
+    tabla = (
+        pd.Series(booster.feature_importance("split"), index=booster.feature_name())
+        .sort_values(ascending=False)
+        .head(top)[::-1]
+    )
+    IMPORTANCIA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(7, 6))
+    ax.barh(tabla.index, tabla.to_numpy(), color="#2E6F95")
+    ax.set_title(f"Top {top} features por número de splits (LightGBM)", fontsize=10)
+    ax.set_xlabel("veces que la feature se usa para dividir un nodo")
+    ax.tick_params(axis="y", labelsize=8)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.grid(axis="x", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(IMPORTANCIA_PATH, dpi=140, bbox_inches="tight")
+    plt.close(fig)
+    return IMPORTANCIA_PATH
+
+
 def _figura_global(valores: np.ndarray, X: pd.DataFrame) -> Path:
     SUMMARY_PATH.parent.mkdir(parents=True, exist_ok=True)
     plt.figure()
@@ -231,6 +258,7 @@ def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
     print(f"calculando SHAP sobre {len(X_muestra):,} filas de train…")
     valores = valores_shap(explicador, X_muestra)
     fig_global = _figura_global(valores, X_muestra)
+    fig_importancia = _figura_importancia(modelo)
 
     media_abs = pd.Series(np.abs(valores).mean(axis=0), index=X_muestra.columns)
     top_global = media_abs.sort_values(ascending=False).head(20)
@@ -275,6 +303,7 @@ def ejecutar(version: str = "latest", muestra: int = MUESTRA_GLOBAL) -> dict:
             "razones": razones_rechazado,
         },
         "figuras": [
+            fig_importancia.relative_to(ROOT).as_posix(),
             fig_global.relative_to(ROOT).as_posix(),
             fig_local.relative_to(ROOT).as_posix(),
         ],
