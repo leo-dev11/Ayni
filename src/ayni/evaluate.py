@@ -44,6 +44,13 @@ EVALUACION_PATH = REPORTS_DIR / "evaluacion_test.json"
 CATEGORIAS_PATH = PROCESSED_DIR / "categorias.json"
 REGISTERED_MODEL = "ayni-lgbm"
 
+# Suelo de calidad: si el modelo baja de aquí, el pipeline falla en vez de publicar.
+ROC_AUC_MINIMO = 0.75
+
+
+class CalidadInsuficiente(Exception):
+    """El modelo no alcanza el mínimo exigido sobre el test congelado."""
+
 
 class TestCongelado(Exception):
     """Se intentó leer el test sin cumplir las salvaguardas."""
@@ -217,11 +224,12 @@ def evaluar_test(version: str = "latest") -> dict:
     for nombre, corte in (("umbral_050", 0.5), ("umbral_optimo", optimo)):
         filas[nombre] = evaluar(y, proba, corte).a_dict()
 
+    roc_auc = round(float(roc_auc_score(y, proba)), 4)
     resultado = {
         "version_modelo": version,
         "fingerprint_test": fingerprint(test[ID_COL]),
         "n_test": int(len(test)),
-        "roc_auc": round(float(roc_auc_score(y, proba)), 4),
+        "roc_auc": roc_auc,
         "pr_auc": round(float(average_precision_score(y, proba)), 4),
         "umbral_optimo": optimo,
         **filas,
@@ -242,4 +250,10 @@ def evaluar_test(version: str = "latest") -> dict:
             f"costo total {fila['costo']:,.0f}"
         )
     print(f"  {EVALUACION_PATH.relative_to(ROOT)}")
+
+    if roc_auc < ROC_AUC_MINIMO:
+        raise CalidadInsuficiente(
+            f"ROC-AUC {roc_auc:.4f} por debajo del mínimo {ROC_AUC_MINIMO}: "
+            "el modelo no se publica."
+        )
     return resultado

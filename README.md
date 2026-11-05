@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-<!-- ![CI](https://github.com/leo-dev11/Ayni/actions/workflows/ci.yml/badge.svg) -->
+![CI](https://github.com/leo-dev11/Ayni/actions/workflows/ci.yml/badge.svg)
 
 **Scoring de riesgo crediticio de punta a punta: modelo explicable, decisión por costo y monitoreo de drift.**
 
@@ -140,6 +140,7 @@ flowchart LR
 6. **Umbral por costo.** Se recorre la curva de umbrales y se elige el que minimiza el costo esperado, con la matriz documentada.
 7. **Explicación dentro del servicio.** SHAP global para el reporte, SHAP local convertido en *reason codes* para cada decisión individual.
 8. **Trazabilidad completa.** Cada corrida queda en MLflow y el mejor modelo va al Model Registry con su umbral pegado al artefacto.
+9. **Compuerta de calidad.** `ayni evaluate` falla si el ROC-AUC del test baja de **0.75**, y CI corre los 51 tests en cada push sin necesitar el dataset: todo se construye con datos sintéticos y modelos diminutos.
 
 ---
 
